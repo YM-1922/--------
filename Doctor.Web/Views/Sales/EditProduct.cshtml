@@ -20,10 +20,11 @@
         <h6 class="mb-0 fw-bold text-primary"><i class="bi bi-phone ms-1"></i>بيانات ومواصفات الجهاز</h6>
     </div>
     <div class="card-body p-4">
-        <form asp-action="EditProduct" asp-route-id="@Model.Id" method="post">
+        <form asp-action="EditProduct" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data">
             @Html.AntiForgeryToken()
             <input type="hidden" asp-for="Id" />
             <input type="hidden" asp-for="ProductType" value="1" />
+            <input type="hidden" asp-for="ImageUrl" />
 
             <div class="row g-3">
                 <div class="col-12 col-md-8">
@@ -40,6 +41,25 @@
                             <option value="@b.Id" selected="@(b.Id == Model.BrandId)">@b.Name</option>
                         }
                     </select>
+                </div>
+
+                <!-- Device Image Upload / Edit -->
+                <div class="col-12">
+                    <label class="form-label small fw-bold">
+                        <i class="bi bi-image-fill text-success ms-1"></i>صورة الجهاز
+                    </label>
+                    <div class="d-flex align-items-center gap-3">
+                        @if (!string.IsNullOrEmpty(Model.ImageUrl))
+                        {
+                            <div class="border rounded p-1 text-center" style="width: 70px; height: 70px; background: #f8fafc;">
+                                <img src="@Model.ImageUrl" alt="@Model.Name" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
+                            </div>
+                        }
+                        <div class="flex-grow-1">
+                            <input type="file" name="ImageFile" accept="image/*" class="form-control" />
+                            <small class="text-muted">اختر صورة جديدة إذا كنت ترغب في استبدال الصورة الحالية</small>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="col-6 col-md-3">

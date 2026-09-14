@@ -20,153 +20,153 @@ build_property.TargetFrameworkVersion = v10.0
 build_property.EntryPointFilePath = 
 build_property.RootNamespace = Doctor.Web
 build_property.RootNamespace = Doctor.Web
-build_property.ProjectDir = d:\االدكتور\Doctor.Web\
+build_property.ProjectDir = D:\االدكتور\Doctor.Web\
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 
 build_property.RazorLangVersion = 10.0
 build_property.SupportLocalizedComponentNames = 
 build_property.GenerateRazorMetadataSourceChecksumAttributes = 
-build_property.MSBuildProjectDirectory = d:\االدكتور\Doctor.Web
+build_property.MSBuildProjectDirectory = D:\االدكتور\Doctor.Web
 build_property._RazorSourceGeneratorDebug = 
 build_property.EffectiveAnalysisLevelStyle = 10.0
 build_property.EnableCodeStyleSeverity = 
 
-[d:/االدكتور/Doctor.Web/Views/Account/AccessDenied.cshtml]
+[D:/االدكتور/Doctor.Web/Views/Account/AccessDenied.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFxBY2Nlc3NEZW5pZWQuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[d:/االدكتور/Doctor.Web/Views/Account/ForgotPassword.cshtml]
+[D:/االدكتور/Doctor.Web/Views/Account/ForgotPassword.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFxGb3Jnb3RQYXNzd29yZC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[d:/االدكتور/Doctor.Web/Views/Account/Login.cshtml]
+[D:/االدكتور/Doctor.Web/Views/Account/Login.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFxMb2dpbi5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[d:/االدكتور/Doctor.Web/Views/Account/VerifyResetCode.cshtml]
+[D:/االدكتور/Doctor.Web/Views/Account/VerifyResetCode.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFxWZXJpZnlSZXNldENvZGUuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[d:/االدكتور/Doctor.Web/Views/Admin/AuditLogs.cshtml]
+[D:/االدكتور/Doctor.Web/Views/Admin/AuditLogs.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWRtaW5cQXVkaXRMb2dzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[d:/االدكتور/Doctor.Web/Views/Admin/Index.cshtml]
+[D:/االدكتور/Doctor.Web/Views/Admin/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWRtaW5cSW5kZXguY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[d:/االدكتور/Doctor.Web/Views/Admin/InventoryReport.cshtml]
+[D:/االدكتور/Doctor.Web/Views/Admin/InventoryReport.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWRtaW5cSW52ZW50b3J5UmVwb3J0LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[d:/االدكتور/Doctor.Web/Views/Admin/Roles.cshtml]
+[D:/االدكتور/Doctor.Web/Views/Admin/Roles.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWRtaW5cUm9sZXMuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[d:/االدكتور/Doctor.Web/Views/Admin/SalesReport.cshtml]
+[D:/االدكتور/Doctor.Web/Views/Admin/SalesReport.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWRtaW5cU2FsZXNSZXBvcnQuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[d:/االدكتور/Doctor.Web/Views/Admin/Settings.cshtml]
+[D:/االدكتور/Doctor.Web/Views/Admin/Settings.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWRtaW5cU2V0dGluZ3MuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[d:/االدكتور/Doctor.Web/Views/Admin/Users.cshtml]
+[D:/االدكتور/Doctor.Web/Views/Admin/Users.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWRtaW5cVXNlcnMuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[d:/االدكتور/Doctor.Web/Views/Barcode/Index.cshtml]
+[D:/االدكتور/Doctor.Web/Views/Barcode/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQmFyY29kZVxJbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[d:/االدكتور/Doctor.Web/Views/Barcode/PrintLabels.cshtml]
+[D:/االدكتور/Doctor.Web/Views/Barcode/PrintLabels.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQmFyY29kZVxQcmludExhYmVscy5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[d:/االدكتور/Doctor.Web/Views/Customers/Details.cshtml]
+[D:/االدكتور/Doctor.Web/Views/Customers/Details.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ3VzdG9tZXJzXERldGFpbHMuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[d:/االدكتور/Doctor.Web/Views/Customers/Index.cshtml]
+[D:/االدكتور/Doctor.Web/Views/Customers/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ3VzdG9tZXJzXEluZGV4LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[d:/االدكتور/Doctor.Web/Views/Customers/PaymentReceipt.cshtml]
+[D:/االدكتور/Doctor.Web/Views/Customers/PaymentReceipt.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ3VzdG9tZXJzXFBheW1lbnRSZWNlaXB0LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[d:/االدكتور/Doctor.Web/Views/Home/Index.cshtml]
+[D:/االدكتور/Doctor.Web/Views/Home/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSG9tZVxJbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[d:/االدكتور/Doctor.Web/Views/Home/Privacy.cshtml]
+[D:/االدكتور/Doctor.Web/Views/Home/Privacy.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSG9tZVxQcml2YWN5LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[d:/االدكتور/Doctor.Web/Views/Sales/Brands.cshtml]
+[D:/االدكتور/Doctor.Web/Views/Sales/Brands.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2FsZXNcQnJhbmRzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[d:/االدكتور/Doctor.Web/Views/Sales/Categories.cshtml]
+[D:/االدكتور/Doctor.Web/Views/Sales/Categories.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2FsZXNcQ2F0ZWdvcmllcy5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[d:/االدكتور/Doctor.Web/Views/Sales/CreateProduct.cshtml]
+[D:/االدكتور/Doctor.Web/Views/Sales/CreateProduct.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2FsZXNcQ3JlYXRlUHJvZHVjdC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[d:/االدكتور/Doctor.Web/Views/Sales/EditProduct.cshtml]
+[D:/االدكتور/Doctor.Web/Views/Sales/EditProduct.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2FsZXNcRWRpdFByb2R1Y3QuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[d:/االدكتور/Doctor.Web/Views/Sales/Index.cshtml]
+[D:/االدكتور/Doctor.Web/Views/Sales/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2FsZXNcSW5kZXguY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[d:/االدكتور/Doctor.Web/Views/Sales/Invoice.cshtml]
+[D:/االدكتور/Doctor.Web/Views/Sales/Invoice.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2FsZXNcSW52b2ljZS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[d:/االدكتور/Doctor.Web/Views/Sales/Invoices.cshtml]
+[D:/االدكتور/Doctor.Web/Views/Sales/Invoices.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2FsZXNcSW52b2ljZXMuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[d:/االدكتور/Doctor.Web/Views/Sales/Pos.cshtml]
+[D:/االدكتور/Doctor.Web/Views/Sales/Pos.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2FsZXNcUG9zLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[d:/االدكتور/Doctor.Web/Views/Sales/Products.cshtml]
+[D:/االدكتور/Doctor.Web/Views/Sales/Products.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2FsZXNcUHJvZHVjdHMuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[d:/االدكتور/Doctor.Web/Views/Shared/Error.cshtml]
+[D:/االدكتور/Doctor.Web/Views/Shared/Error.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXEVycm9yLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[d:/االدكتور/Doctor.Web/Views/Shared/_ValidationScriptsPartial.cshtml]
+[D:/االدكتور/Doctor.Web/Views/Shared/_ValidationScriptsPartial.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXF9WYWxpZGF0aW9uU2NyaXB0c1BhcnRpYWwuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[d:/االدكتور/Doctor.Web/Views/Suppliers/Details.cshtml]
+[D:/االدكتور/Doctor.Web/Views/Suppliers/Details.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3VwcGxpZXJzXERldGFpbHMuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[d:/االدكتور/Doctor.Web/Views/Suppliers/Index.cshtml]
+[D:/االدكتور/Doctor.Web/Views/Suppliers/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3VwcGxpZXJzXEluZGV4LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[d:/االدكتور/Doctor.Web/Views/Suppliers/PaymentReceipt.cshtml]
+[D:/االدكتور/Doctor.Web/Views/Suppliers/PaymentReceipt.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3VwcGxpZXJzXFBheW1lbnRSZWNlaXB0LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[d:/االدكتور/Doctor.Web/Views/_ViewImports.cshtml]
+[D:/االدكتور/Doctor.Web/Views/_ViewImports.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcX1ZpZXdJbXBvcnRzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[d:/االدكتور/Doctor.Web/Views/_ViewStart.cshtml]
+[D:/االدكتور/Doctor.Web/Views/_ViewStart.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcX1ZpZXdTdGFydC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[d:/االدكتور/Doctor.Web/Views/Shared/_Layout.cshtml]
+[D:/االدكتور/Doctor.Web/Views/Shared/_Layout.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXF9MYXlvdXQuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = b-xcrc352yjn

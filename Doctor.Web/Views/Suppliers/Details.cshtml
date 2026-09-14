@@ -271,7 +271,7 @@
                 <h5 class="modal-title fw-bold"><i class="bi bi-box-seam ms-2"></i>توريد أجهزة جديدة للمخزون من (@Model.Name)</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form asp-action="Supply" method="post">
+            <form asp-action="Supply" method="post" enctype="multipart/form-data">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="supplierId" value="@Model.Id" />
                 <div class="modal-body p-3">
@@ -306,7 +306,7 @@
                             @foreach (var p in products)
                             {
                                 <option value="@p.Id" data-cost="@p.PurchasePrice" data-price="@p.SellingPrice">
-                                    @p.Name @(!string.IsNullOrEmpty(p.Storage) ? $"({p.Storage} / {p.Ram})" : "") - مخزون حالي: @p.StockQuantity
+                                    @p.Name @(!string.IsNullOrEmpty(p.Storage) ? $"({p.Storage} / {p.Ram})" : "") - مخزون حالي: @p.StockQuantity (التكلفة الحالية: @p.PurchasePrice.ToString("N0") ج.م)
                                 </option>
                             }
                         </select>
@@ -356,9 +356,13 @@
                                 <label class="form-label small fw-bold">اللون</label>
                                 <input type="text" name="color" class="form-control form-control-sm" placeholder="مثال: أسود، أزرق، تيتانيوم" />
                             </div>
-                            <div class="col-md-12">
+                            <div class="col-md-6">
                                 <label class="form-label small fw-bold">السيريال أو الـ IMEI (اختياري)</label>
                                 <input type="text" name="imei" class="form-control form-control-sm font-monospace" placeholder="IMEI1 / Serial Number" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">صورة الجهاز</label>
+                                <input type="file" name="imageFile" accept="image/*" class="form-control form-control-sm" />
                             </div>
                         </div>
                     </div>
@@ -370,11 +374,12 @@
                             <input type="number" name="quantity" id="supplyQuantity" class="form-control" value="1" min="1" required oninput="calcSupplyTotal()" />
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label small fw-bold">سعر الشراء (التكلفة للقطعة) <span class="text-danger">*</span></label>
+                            <label class="form-label small fw-bold">سعر الشراء (التكلفة الجديدة) <span class="text-danger">*</span></label>
                             <div class="input-group">
                                 <input type="number" step="1" min="0" name="costPrice" id="supplyCostPrice" class="form-control" required oninput="calcSupplyTotal()" placeholder="0" />
                                 <span class="input-group-text">ج.م</span>
                             </div>
+                            <div id="avgPriceHint" class="text-primary small mt-1" style="display: none; font-size: 0.73rem;"></div>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label small fw-bold">سعر البيع في الكاشير</label>
@@ -573,6 +578,25 @@
         const cost = parseFloat(document.getElementById('supplyCostPrice').value) || 0;
         const total = qty * cost;
         document.getElementById('supplyTotalAmountDisplay').value = total.toLocaleString('en-US') + ' ج.م';
+
+        // Calculate and display average price hint if an existing product is selected
+        const isExisting = document.getElementById('supplyExistingRadio').checked;
+        const select = document.getElementById('existingProductSelect');
+        const hintEl = document.getElementById('avgPriceHint');
+        if (isExisting && select && select.selectedIndex > 0) {
+            const opt = select.options[select.selectedIndex];
+            const oldCost = parseFloat(opt.getAttribute('data-cost')) || 0;
+            if (oldCost > 0) {
+                const avg = Math.round(((oldCost + cost) / 2) * 100) / 100;
+                hintEl.style.display = 'block';
+                hintEl.innerHTML = `<i class="bi bi-calculator ms-1"></i>متوسط التكلفة: (${oldCost} + ${cost}) ÷ 2 = <strong>${avg} ج.م</strong>`;
+            } else {
+                hintEl.style.display = 'none';
+            }
+        } else {
+            if (hintEl) hintEl.style.display = 'none';
+        }
+
         calcSupplyRemaining();
     }
 

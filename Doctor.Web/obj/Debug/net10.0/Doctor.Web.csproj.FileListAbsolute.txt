@@ -166,7 +166,6 @@ D:\االدكتور\Doctor.Web\obj\Debug\net10.0\rjsmcshtml.dswa.cache.json
 D:\االدكتور\Doctor.Web\obj\Debug\net10.0\scopedcss\Views\Shared\_Layout.cshtml.rz.scp.css
 D:\االدكتور\Doctor.Web\obj\Debug\net10.0\scopedcss\bundle\Doctor.Web.styles.css
 D:\االدكتور\Doctor.Web\obj\Debug\net10.0\scopedcss\projectbundle\Doctor.Web.bundle.scp.css
-D:\االدكتور\Doctor.Web\obj\Debug\net10.0\compressed\utu9w5bxk7-{0}-n5hwt8v4et-n5hwt8v4et.gz
 D:\االدكتور\Doctor.Web\obj\Debug\net10.0\compressed\ne6s2a3tti-{0}-61n19gt1b8-61n19gt1b8.gz
 D:\االدكتور\Doctor.Web\obj\Debug\net10.0\compressed\0z3ebxxoj3-{0}-8b80a0ie5m-8b80a0ie5m.gz
 D:\االدكتور\Doctor.Web\obj\Debug\net10.0\compressed\93nja7yhju-{0}-bqjiyaj88i-bqjiyaj88i.gz
@@ -244,3 +243,5 @@ D:\االدكتور\Doctor.Web\obj\Debug\net10.0\refint\Doctor.Web.dll
 D:\االدكتور\Doctor.Web\obj\Debug\net10.0\Doctor.Web.pdb
 D:\االدكتور\Doctor.Web\obj\Debug\net10.0\Doctor.Web.genruntimeconfig.cache
 D:\االدكتور\Doctor.Web\obj\Debug\net10.0\ref\Doctor.Web.dll
+D:\االدكتور\Doctor.Web\obj\Debug\net10.0\Doctor.Web.sourcelink.json
+D:\االدكتور\Doctor.Web\obj\Debug\net10.0\compressed\utu9w5bxk7-{0}-sbor3rybmz-sbor3rybmz.gz

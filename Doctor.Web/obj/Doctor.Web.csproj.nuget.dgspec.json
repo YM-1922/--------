@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "d:\\االدكتور\\Doctor.Web\\Doctor.Web.csproj": {}
+    "D:\\االدكتور\\Doctor.Web\\Doctor.Web.csproj": {}
   },
   "projects": {
-    "d:\\االدكتور\\Doctor.Web\\Doctor.Web.csproj": {
+    "D:\\االدكتور\\Doctor.Web\\Doctor.Web.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "d:\\االدكتور\\Doctor.Web\\Doctor.Web.csproj",
+        "projectUniqueName": "D:\\االدكتور\\Doctor.Web\\Doctor.Web.csproj",
         "projectName": "Doctor.Web",
-        "projectPath": "d:\\االدكتور\\Doctor.Web\\Doctor.Web.csproj",
+        "projectPath": "D:\\االدكتور\\Doctor.Web\\Doctor.Web.csproj",
         "packagesPath": "C:\\Users\\Joo\\.nuget\\packages\\",
-        "outputPath": "d:\\االدكتور\\Doctor.Web\\obj\\",
+        "outputPath": "D:\\االدكتور\\Doctor.Web\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\Joo\\AppData\\Roaming\\NuGet\\NuGet.Config"

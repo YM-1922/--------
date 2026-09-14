@@ -218,7 +218,14 @@
                             <div class="product-grid-card shadow-sm" onclick="addProductToCart(@p.Id, '@Html.Raw(p.Name.Replace("'", "\\'"))', @p.SellingPrice, '@p.Barcode', @p.StockQuantity, '@p.SerialNumberOrImei', '@Html.Raw($"{p.Color} {p.Storage} {p.Ram}".Trim().Replace("'", "\\'"))')">
                                 <div>
                                     <div class="product-img">
-                                        <i class="bi bi-phone"></i>
+                                        @if (!string.IsNullOrEmpty(p.ImageUrl))
+                                        {
+                                            <img src="@p.ImageUrl" alt="@p.Name" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-phone"></i>
+                                        }
                                     </div>
                                     <div class="fw-bold small text-dark mb-1 text-truncate" title="@p.Name">@p.Name</div>
                                     @if (!string.IsNullOrEmpty(p.Storage) || !string.IsNullOrEmpty(p.Ram))

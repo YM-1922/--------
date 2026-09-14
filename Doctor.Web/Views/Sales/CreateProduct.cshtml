@@ -21,7 +21,7 @@
         <h6 class="mb-0 fw-bold text-primary"><i class="bi bi-info-circle-fill ms-1"></i>بيانات ومواصفات الجهاز</h6>
     </div>
     <div class="card-body p-4">
-        <form asp-action="CreateProduct" method="post">
+        <form asp-action="CreateProduct" method="post" enctype="multipart/form-data">
             @Html.AntiForgeryToken()
             <input type="hidden" asp-for="ProductType" value="1" />
             
@@ -53,6 +53,15 @@
                             <option value="@b.Id">@b.Name</option>
                         }
                     </select>
+                </div>
+
+                <!-- Device Image Upload -->
+                <div class="col-12">
+                    <label class="form-label small fw-bold text-dark">
+                        <i class="bi bi-image-fill text-success ms-1"></i>صورة الجهاز (تظهر ببوكس الجهاز في الكاشير)
+                    </label>
+                    <input type="file" name="ImageFile" accept="image/*" class="form-control" />
+                    <small class="text-muted">اختر صورة للجهاز ليتم عرضها في مربع الكاشير والمخزن</small>
                 </div>
 
                 <!-- 3. Storage Space -->

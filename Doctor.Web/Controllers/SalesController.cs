@@ -42,12 +42,11 @@ public class SalesController : Controller
         ViewBag.Categories = await _context.ProductCategories.Where(c => c.IsActive).ToListAsync();
         ViewBag.Customers = await _context.Customers.OrderBy(c => c.Name).Take(50).ToListAsync();
 
-        // Sample initial quick products (top stock items)
+        // Fetch all active device products so POS brand filters show all devices for Samsung, Apple, etc.
         ViewBag.QuickProducts = await _context.Products
             .Include(p => p.Brand)
-            .Where(p => p.IsActive && p.StockQuantity > 0)
+            .Where(p => p.IsActive && p.ProductType == ProductType.Device)
             .OrderByDescending(p => p.StockQuantity)
-            .Take(12)
             .ToListAsync();
 
         return View();
@@ -194,7 +193,7 @@ public class SalesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CreateProduct(Product product)
+    public async Task<IActionResult> CreateProduct(Product product, IFormFile? ImageFile)
     {
         ModelState.Remove(nameof(product.ProductCategory));
         ModelState.Remove(nameof(product.Brand));
@@ -220,6 +219,22 @@ public class SalesController : Controller
         {
             ViewBag.Brands = await _context.Brands.Where(b => b.IsActive).OrderBy(b => b.Name).ToListAsync();
             return View(product);
+        }
+
+        if (ImageFile != null && ImageFile.Length > 0)
+        {
+            var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "products");
+            if (!Directory.Exists(uploadsFolder))
+            {
+                Directory.CreateDirectory(uploadsFolder);
+            }
+            var fileName = Guid.NewGuid().ToString("N") + Path.GetExtension(ImageFile.FileName);
+            var filePath = Path.Combine(uploadsFolder, fileName);
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await ImageFile.CopyToAsync(stream);
+            }
+            product.ImageUrl = "/uploads/products/" + fileName;
         }
 
         product.ProductType = ProductType.Device;
@@ -268,7 +283,7 @@ public class SalesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> EditProduct(int id, Product productInput)
+    public async Task<IActionResult> EditProduct(int id, Product productInput, IFormFile? ImageFile)
     {
         var product = await _context.Products.FindAsync(id);
         if (product == null)
@@ -292,6 +307,22 @@ public class SalesController : Controller
         }
 
         int oldStock = product.StockQuantity;
+
+        if (ImageFile != null && ImageFile.Length > 0)
+        {
+            var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "products");
+            if (!Directory.Exists(uploadsFolder))
+            {
+                Directory.CreateDirectory(uploadsFolder);
+            }
+            var fileName = Guid.NewGuid().ToString("N") + Path.GetExtension(ImageFile.FileName);
+            var filePath = Path.Combine(uploadsFolder, fileName);
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await ImageFile.CopyToAsync(stream);
+            }
+            product.ImageUrl = "/uploads/products/" + fileName;
+        }
 
         product.Name = productInput.Name.Trim();
         product.BrandId = productInput.BrandId;

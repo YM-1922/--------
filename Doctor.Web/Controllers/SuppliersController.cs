@@ -141,7 +141,8 @@ public class SuppliersController : Controller
         int quantity,
         decimal paidAmount,
         PaymentMethod paymentMethod,
-        string? notes)
+        string? notes,
+        IFormFile? imageFile)
     {
         try
         {
@@ -181,8 +182,22 @@ public class SuppliersController : Controller
                 product = existing;
                 int beforeStock = product.StockQuantity;
                 product.StockQuantity += quantity;
-                product.PurchasePrice = costPrice;
-                if (sellingPrice > 0) product.SellingPrice = sellingPrice;
+
+                // Calculate average purchase price: (old + new) / 2
+                decimal oldPurchasePrice = product.PurchasePrice;
+                if (oldPurchasePrice > 0)
+                {
+                    product.PurchasePrice = Math.Round((oldPurchasePrice + costPrice) / 2m, 2);
+                }
+                else
+                {
+                    product.PurchasePrice = costPrice;
+                }
+
+                if (sellingPrice > 0)
+                {
+                    product.SellingPrice = sellingPrice;
+                }
 
                 _context.InventoryTransactions.Add(new InventoryTransaction
                 {
@@ -192,7 +207,7 @@ public class SuppliersController : Controller
                     QuantityBefore = beforeStock,
                     QuantityAfter = product.StockQuantity,
                     UserId = userId > 0 ? userId : null,
-                    Notes = $"توريد من المورد {supplier.Name}",
+                    Notes = $"توريد من المورد {supplier.Name} (متوسط سعر الشراء: {product.PurchasePrice:N2} ج.م)",
                     CreatedAt = DateTime.UtcNow
                 });
             }
@@ -202,6 +217,23 @@ public class SuppliersController : Controller
                 {
                     TempData["Error"] = "يرجى كتابة اسم الجهاز عند إنشاء جهاز جديد للتوريد.";
                     return RedirectToAction(nameof(Details), new { id = supplierId });
+                }
+
+                string? imageUrl = null;
+                if (imageFile != null && imageFile.Length > 0)
+                {
+                    var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "products");
+                    if (!Directory.Exists(uploadsFolder))
+                    {
+                        Directory.CreateDirectory(uploadsFolder);
+                    }
+                    var fileName = Guid.NewGuid().ToString("N") + Path.GetExtension(imageFile.FileName);
+                    var filePath = Path.Combine(uploadsFolder, fileName);
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await imageFile.CopyToAsync(stream);
+                    }
+                    imageUrl = "/uploads/products/" + fileName;
                 }
 
                 var defaultCat = await _context.ProductCategories.FirstOrDefaultAsync();
@@ -221,6 +253,7 @@ public class SuppliersController : Controller
                     MinStockLevel = 1,
                     ProductType = ProductType.Device,
                     Barcode = DateTime.UtcNow.Ticks.ToString()[^12..],
+                    ImageUrl = imageUrl,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow
                 };
