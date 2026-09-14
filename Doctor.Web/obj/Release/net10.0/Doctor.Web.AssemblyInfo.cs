@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Doctor.Web")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b7dca0e9ed74160baa84c33f75315dd2f48c2b5f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+992f5479256dc9451753cfb66cc4da775d3d5fca")]
 [assembly: System.Reflection.AssemblyProductAttribute("Doctor.Web")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Doctor.Web")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
