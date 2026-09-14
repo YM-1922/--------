@@ -1,0 +1,403 @@
+@model Doctor.Web.Models.Entities.Customer
+@{
+    ViewData["Title"] = $"كشف حساب العميل - {Model.Name}";
+    var completedSales = Model.Sales.Where(s => s.Status == Doctor.Web.Models.Entities.SaleStatus.Completed).ToList();
+    decimal totalSalesSpent = completedSales.Sum(s => s.TotalAmount);
+    decimal totalPaid = completedSales.Sum(s => s.PaidAmount);
+    decimal totalRemainingDebt = completedSales.Sum(s => s.RemainingAmount);
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h3 class="fw-bold mb-1"><i class="bi bi-file-earmark-spreadsheet-fill text-primary ms-2"></i>كشف حساب العميل والمديونيات</h3>
+        <p class="text-muted small mb-0">سجل المعاملات المالية، الفواتير الآجلة، والدفعات المسددة للعميل</p>
+    </div>
+    <div class="d-flex gap-2">
+        @if (totalRemainingDebt > 0)
+        {
+            <button type="button" class="btn btn-success btn-sm d-flex align-items-center gap-1 shadow-sm px-3 fw-bold" data-bs-toggle="modal" data-bs-target="#recordPaymentModal">
+                <i class="bi bi-cash-coin fs-5"></i>
+                <span>تسجيل دفعة سداد</span>
+            </button>
+        }
+        <a href="@Url.Action("Pos", "Sales")" class="btn btn-primary btn-sm d-flex align-items-center gap-1 shadow-sm">
+            <i class="bi bi-cart-plus"></i> فاتورة بيع جديدة (POS)
+        </a>
+        <form asp-controller="Customers" asp-action="Delete" asp-route-id="@Model.Id" method="post" onsubmit="return confirm('هل أنت متاكد من حذف هذا العميل (@Model.Name) نهائياً من النظام؟');" class="d-inline">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-outline-danger btn-sm d-flex align-items-center gap-1">
+                <i class="bi bi-trash-fill"></i> حذف العميل
+            </button>
+        </form>
+        <a href="@Url.Action("Index", "Customers")" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-right ms-1"></i> قائمة العملاء
+        </a>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show shadow-sm mb-4" role="alert">
+        <i class="bi bi-check-circle-fill ms-2"></i> @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show shadow-sm mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill ms-2"></i> @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["Warning"] != null)
+{
+    <div class="alert alert-warning alert-dismissible fade show shadow-sm mb-4" role="alert">
+        <i class="bi bi-info-circle-fill ms-2"></i> @TempData["Warning"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<!-- Customer Profile Summary Card -->
+<div class="card shadow-sm mb-4">
+    <div class="card-body p-4">
+        <div class="row align-items-center g-3">
+            <div class="col-md-auto text-center">
+                <div class="rounded-circle @(totalRemainingDebt > 0 ? "bg-danger text-white" : "bg-primary text-white") fw-bold d-inline-flex align-items-center justify-content-center shadow-sm" style="width: 75px; height: 75px; font-size: 2rem;">
+                    @Model.Name.FirstOrDefault()
+                </div>
+            </div>
+            <div class="col-md">
+                <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                    <h4 class="fw-bold mb-0 text-dark">@Model.Name</h4>
+                    @if (totalRemainingDebt > 0)
+                    {
+                        <span class="badge bg-danger px-3 py-1 fw-bold">عميل آجل (مدين)</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-success-subtle text-success px-3 py-1 fw-bold border border-success-subtle">الحساب خالص</span>
+                    }
+                </div>
+
+                <div class="d-flex flex-wrap gap-3 text-muted small mt-2">
+                    <div>
+                        <i class="bi bi-telephone text-primary ms-1"></i>
+                        @if (Model.PhoneNumber != "بدون هاتف")
+                        {
+                            <a href="tel:@Model.PhoneNumber" class="font-monospace fw-bold text-dark text-decoration-none">@Model.PhoneNumber</a>
+                        }
+                        else
+                        {
+                            <span>بدون هاتف</span>
+                        }
+                    </div>
+                    @if (!string.IsNullOrEmpty(Model.WhatsAppNumber) && Model.WhatsAppNumber != "بدون هاتف")
+                    {
+                        <div>
+                            <a href="https://wa.me/@Model.WhatsAppNumber" target="_blank" class="text-success text-decoration-none fw-bold">
+                                <i class="bi bi-whatsapp ms-1"></i> فتح محادثة واتساب
+                            </a>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.Address))
+                    {
+                        <div><i class="bi bi-geo-alt text-danger ms-1"></i>@Model.Address</div>
+                    }
+                    <div><i class="bi bi-calendar3 ms-1"></i> عميل منذ: @Model.CreatedAt.ToString("yyyy/MM/dd")</div>
+                </div>
+                @if (!string.IsNullOrEmpty(Model.Notes))
+                {
+                    <div class="alert alert-light border p-2 mt-2 mb-0 small text-muted">
+                        <i class="bi bi-bookmark-star-fill text-warning ms-1"></i> <strong>تصنيف العميل:</strong> @Model.Notes
+                    </div>
+                }
+            </div>
+
+            <!-- Financial KPIs for this Customer -->
+            <div class="col-md-auto customer-financial-col">
+                <div class="d-flex flex-column gap-2" style="min-width: 220px;">
+                    <div class="d-flex justify-content-between align-items-center small">
+                        <span class="text-muted">إجمالي المسحوبات:</span>
+                        <strong class="text-dark fs-6">@totalSalesSpent.ToString("N2") ج.م</strong>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center small">
+                        <span class="text-muted">إجمالي المسدد:</span>
+                        <strong class="text-success fs-6">@totalPaid.ToString("N2") ج.م</strong>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                        <span class="fw-bold text-dark">صافي المديونية:</span>
+                        <strong class="@(totalRemainingDebt > 0 ? "text-danger fs-5" : "text-success fs-6")">
+                            @totalRemainingDebt.ToString("N2") ج.م
+                        </strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@{
+    var allPayments = Model.Sales
+        .SelectMany(s => s.Payments.Select(p => new {
+            Payment = p,
+            Sale = s
+        }))
+        .OrderByDescending(p => p.Payment.CreatedAt)
+        .ToList();
+}
+
+<!-- Ledger & History Tabs -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-white p-2">
+        <ul class="nav nav-pills card-header-pills" id="customerLedgerTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active fw-bold d-flex align-items-center gap-2" id="payments-tab" data-bs-toggle="pill" data-bs-target="#payments-pane" type="button" role="tab">
+                    <i class="bi bi-cash-coin text-success"></i>
+                    <span>سجل دفعات وسندات السداد</span>
+                    <span class="badge bg-success rounded-pill">@allPayments.Count</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold d-flex align-items-center gap-2" id="sales-tab" data-bs-toggle="pill" data-bs-target="#sales-pane" type="button" role="tab">
+                    <i class="bi bi-receipt text-primary"></i>
+                    <span>فواتير ومسحوبات العميل</span>
+                    <span class="badge bg-primary rounded-pill">@Model.Sales.Count</span>
+                </button>
+            </li>
+        </ul>
+    </div>
+
+    <div class="tab-content" id="customerLedgerTabContent">
+        <!-- TAB 1: DETAILED PAYMENTS LEDGER -->
+        <div class="tab-pane fade show active" id="payments-pane" role="tabpanel">
+            <div class="p-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2 bg-light">
+                <div class="small text-muted">
+                    <i class="bi bi-info-circle ms-1"></i>
+                    سجل كافة المبالغ والدفعات النقدية المسددة من العميل وتاريخها والملاحظات المحفوظة معها
+                </div>
+                @if (totalRemainingDebt > 0)
+                {
+                    <button type="button" class="btn btn-success btn-sm fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#recordPaymentModal">
+                        <i class="bi bi-plus-circle ms-1"></i> تسجيل دفعة سداد جديدة
+                    </button>
+                }
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light small">
+                        <tr>
+                            <th class="ps-3">رقم السند / المرجع</th>
+                            <th>تاريخ وتوقيت السداد</th>
+                            <th>المبلغ المسدد</th>
+                            <th>طريقة الدفع</th>
+                            <th>الفاتورة المرتبطة</th>
+                            <th>البيان وملاحظات السداد</th>
+                            <th class="pe-3 text-center">طباعة إيصال</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (allPayments.Any())
+                        {
+                            foreach (var item in allPayments)
+                            {
+                                var pay = item.Payment;
+                                var sale = item.Sale;
+                                <tr>
+                                    <td class="ps-3">
+                                        <strong class="text-dark font-monospace">@(pay.ReferenceNumber ?? $"REC-{pay.Id:D5}")</strong>
+                                    </td>
+                                    <td class="small text-muted">
+                                        <i class="bi bi-clock ms-1"></i>@pay.CreatedAt.ToString("yyyy/MM/dd hh:mm tt")
+                                    </td>
+                                    <td>
+                                        <span class="text-success fw-bold fs-6">@pay.Amount.ToString("N2") ج.م</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark border">
+                                            @if (pay.PaymentMethod == Doctor.Web.Models.Entities.PaymentMethod.Cash)
+                                            {
+                                                <span><i class="bi bi-cash ms-1 text-success"></i>نقدي</span>
+                                            }
+                                            else if (pay.PaymentMethod == Doctor.Web.Models.Entities.PaymentMethod.Card)
+                                            {
+                                                <span><i class="bi bi-credit-card ms-1 text-primary"></i>بطاقة / فيزا</span>
+                                            }
+                                            else
+                                            {
+                                                <span><i class="bi bi-phone ms-1 text-info"></i>تحويل إلكتروني</span>
+                                            }
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <a href="@Url.Action("Invoice", "Sales", new { id = sale.InvoiceNumber })" class="font-monospace text-decoration-none text-primary fw-bold">
+                                            @sale.InvoiceNumber
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <span class="small text-dark">
+                                            @(string.IsNullOrEmpty(pay.Notes) ? "سداد نقدي على الحساب" : pay.Notes)
+                                        </span>
+                                    </td>
+                                    <td class="pe-3 text-center">
+                                        <a href="@Url.Action("PaymentReceipt", "Customers", new { id = pay.Id })" class="btn btn-sm btn-outline-success py-1 px-2" title="طباعة سند قبض حراري">
+                                            <i class="bi bi-printer-fill ms-1"></i> إيصال
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="7" class="text-center py-5 text-muted">
+                                    <i class="bi bi-cash-coin display-6 d-block mb-2 text-muted opacity-50"></i>
+                                    <span>لا توجد دفعات أو سندات سداد مسجلة لهذا العميل حتى الآن.</span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TAB 2: SALES INVOICES -->
+        <div class="tab-pane fade" id="sales-pane" role="tabpanel">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light small">
+                        <tr>
+                            <th class="ps-3">رقم الفاتورة</th>
+                            <th>التاريخ والوقت</th>
+                            <th>الأصناف المشتراة</th>
+                            <th>طريقة الدفع</th>
+                            <th>الإجمالي</th>
+                            <th>المسدد</th>
+                            <th>المتبقي (آجل)</th>
+                            <th>الحالة</th>
+                            <th class="pe-3 text-center">إجراء</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Sales.Any())
+                        {
+                            foreach (var s in Model.Sales.OrderByDescending(s => s.CreatedAt))
+                            {
+                                <tr class="@(s.RemainingAmount > 0 ? "table-warning-subtle" : "")">
+                                    <td class="ps-3"><strong class="text-primary font-monospace">@s.InvoiceNumber</strong></td>
+                                    <td class="small text-muted">@s.CreatedAt.ToString("yyyy/MM/dd HH:mm")</td>
+                                    <td>
+                                        <div class="small">
+                                            @foreach (var item in s.Items.Take(3))
+                                            {
+                                                <div>&bull; @item.Product.Name (@item.Quantity)</div>
+                                            }
+                                            @if (s.Items.Count > 3)
+                                            {
+                                                <span class="text-muted" style="font-size: 0.72rem;">+ @(s.Items.Count - 3) أصناف أخرى</span>
+                                            }
+                                        </div>
+                                    </td>
+                                    <td><span class="badge bg-light text-dark border">@s.PaymentMethod</span></td>
+                                    <td class="fw-bold">@s.TotalAmount.ToString("N2") ج.م</td>
+                                    <td class="text-success fw-bold">@s.PaidAmount.ToString("N2") ج.م</td>
+                                    <td>
+                                        @if (s.RemainingAmount > 0)
+                                        {
+                                            <span class="text-danger fw-bold fs-6">@s.RemainingAmount.ToString("N2") ج.م</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (s.RemainingAmount > 0)
+                                        {
+                                            <span class="badge bg-danger">متبقي دين</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle">خالصة</span>
+                                        }
+                                    </td>
+                                    <td class="pe-3 text-center">
+                                        <a href="@Url.Action("Invoice", "Sales", new { id = s.InvoiceNumber })" class="btn btn-sm btn-outline-primary py-1 px-2" title="عرض الفاتورة الحرارية">
+                                            <i class="bi bi-printer ms-1"></i> عرض
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="9" class="text-center py-5 text-muted">
+                                    <i class="bi bi-receipt display-6 d-block mb-2 text-muted opacity-50"></i>
+                                    <span>لا توجد فواتير أو حركات مسجلة لهذا العميل حتى الآن.</span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Record Payment Modal -->
+<div class="modal fade" id="recordPaymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <form asp-controller="Customers" asp-action="RecordPayment" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="customerId" value="@Model.Id" />
+                <div class="modal-header bg-success text-white py-2 px-3">
+                    <h6 class="modal-title fw-bold mb-0">
+                        <i class="bi bi-cash-stack ms-1"></i> تسجيل دفعة سداد على الحساب
+                    </h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <div class="alert alert-info py-2 px-3 small mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>العميل: <strong>@Model.Name</strong></span>
+                            <span>المديونية المتبقية: <strong class="text-danger fs-6">@totalRemainingDebt.ToString("N2") ج.م</strong></span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">المبلغ المسدد (ج.م) <span class="text-danger">*</span></label>
+                        <input type="number" name="amount" class="form-control form-control-lg text-center fw-bold text-success" value="@totalRemainingDebt" step="0.5" min="1" max="@totalRemainingDebt" required />
+                        <small class="text-muted">يمكنك سداد المبلغ كاملاً أو دفعة جزئية وسيقوم النظام بتسوية الفواتير تلقائياً وتوثيقها في السجل.</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">طريقة الدفع <span class="text-danger">*</span></label>
+                        <select name="paymentMethod" class="form-select">
+                            <option value="1">نقدي كاش (Cash)</option>
+                            <option value="3">تحويل إنستاباي / فودافون كاش / محفظة</option>
+                            <option value="2">فيزا / بطاقة بنكية</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">رقم السند / المرجع (اختياري)</label>
+                        <input type="text" name="referenceNumber" class="form-control form-control-sm font-monospace" placeholder="مثال: REC-@DateTime.UtcNow.ToString("yyyyMMdd")-01" />
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label fw-bold small">البيان وملاحظات السداد التفصيلية</label>
+                        <input type="text" name="notes" class="form-control" placeholder="مثال: سداد نقدي باليد في السنتر / تحويل إنستاباي..." />
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2 px-3">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-success btn-sm px-4 fw-bold">
+                        <i class="bi bi-check-circle ms-1"></i> حفظ وتوثيق في السجل
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

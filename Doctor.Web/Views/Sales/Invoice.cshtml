@@ -1,0 +1,434 @@
+@model Doctor.Web.Models.Entities.Sale
+@{
+    ViewData["Title"] = $"فاتورة مبيعات - {Model.InvoiceNumber}";
+    var settings = ViewBag.Settings as Dictionary<string, string> ?? new();
+    string centerName = settings.GetValueOrDefault("CenterName", "دكتور سنتر للهواتف الذكية والأجهزة");
+    string centerPhone = settings.GetValueOrDefault("CenterPhone", "01020304050");
+    string centerAddress = settings.GetValueOrDefault("CenterAddress", "القاهرة - مصر");
+    string centerTax = settings.GetValueOrDefault("CenterTaxNumber", "");
+    string qrCode = ViewBag.QrCodeBase64 as string ?? "";
+}
+
+<!-- Action Toolbar (Hidden in Print) -->
+<div class="d-flex justify-content-between align-items-center mb-4 no-print flex-wrap gap-2">
+    <div>
+        <a href="@Url.Action("Invoices", "Sales")" class="btn btn-outline-secondary btn-sm me-1">
+            <i class="bi bi-arrow-right ms-1"></i> قائمة الفواتير
+        </a>
+        <a href="@Url.Action("Pos", "Sales")" class="btn btn-primary btn-sm">
+            <i class="bi bi-cart-plus ms-1"></i> بيع جديد (POS)
+        </a>
+    </div>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        <div class="btn-group btn-group-sm no-print" role="group">
+            <button type="button" class="btn btn-outline-dark active" id="btnSize80" onclick="setSize('80mm')">80mm قياسي</button>
+            <button type="button" class="btn btn-outline-dark" id="btnSize58" onclick="setSize('58mm')">58mm ميني حراري</button>
+        </div>
+
+        @{
+            string custPhone = Model.Customer?.PhoneNumber != "بدون هاتف" ? (Model.Customer?.PhoneNumber ?? "") : "";
+            string waMsg = $"مرحباً {(Model.Customer != null ? Model.Customer.Name : "عميلنا العزيز")}\nشكرًا لتعاملك مع {centerName}\nفاتورة شراء رقم: {Model.InvoiceNumber}\nإجمالي الفاتورة: {Model.TotalAmount:N2} ج.م\nالمدفوع: {Model.PaidAmount:N2} ج.م\nالمتبقي: {Model.RemainingAmount:N2} ج.م\nالتاريخ: {Model.CreatedAt:yyyy/MM/dd HH:mm}\nشكرًا لثقتكم بنا.";
+        }
+        <button type="button" id="shareImageBtn" class="btn btn-success btn-sm d-flex align-items-center gap-1 shadow-sm px-3 fw-bold" onclick="shareInvoiceAsImage()">
+            <i class="bi bi-whatsapp fs-5"></i> مشاركة واتساب
+        </button>
+        <button type="button" class="btn btn-primary btn-sm d-flex align-items-center gap-1 shadow-sm px-3 fw-bold" onclick="printThermal()">
+            <i class="bi bi-printer-fill fs-5"></i> طباعة الفاتورة
+        </button>
+
+        @if (Model.Status == Doctor.Web.Models.Entities.SaleStatus.Completed)
+        {
+            <form asp-controller="Sales" asp-action="ReturnInvoice" method="post" onsubmit="return confirm('تأكيد استرجاع الفاتورة رقم (@Model.InvoiceNumber)؟\n\n- سيتم تسجيل الفاتورة كـ (مرتجعة).\n- ستتم إعادة كافة الأجهزة والمنتجات إلى المخزن فوراً لتكون متاحة للبيع.');" class="d-inline">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@Model.Id" />
+                <input type="hidden" name="returnUrl" value="@Url.Action("Invoice", "Sales", new { id = Model.InvoiceNumber })" />
+                <button type="submit" class="btn btn-warning btn-sm d-flex align-items-center gap-1 shadow-sm text-dark fw-bold">
+                    <i class="bi bi-arrow-counterclockwise"></i> إرجاع للمخزن
+                </button>
+            </form>
+        }
+
+        <form asp-controller="Sales" asp-action="DeleteInvoice" method="post" onsubmit="return confirm('تحذير نهائي:\n\nهل أنت متأكد من حذف الفاتورة رقم (@Model.InvoiceNumber) نهائياً من النظام؟\n\n- ستتم إعادة كافة الأجهزة والأصناف إلى المخزن تلقائياً.\n- سيتم حذف الفاتورة والمدفوعات الخاصة بها تماماً.');" class="d-inline">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="@Model.Id" />
+            <input type="hidden" name="returnStock" value="true" />
+            <button type="submit" class="btn btn-outline-danger btn-sm d-flex align-items-center gap-1 shadow-sm">
+                <i class="bi bi-trash3"></i> حذف الفاتورة
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- INVOICE CONTAINER -->
+<div class="d-flex flex-column align-items-center thermal-preview-container mb-5">
+    @if (Model.Status == Doctor.Web.Models.Entities.SaleStatus.Refunded)
+    {
+        <div class="alert alert-warning border-warning d-flex align-items-center gap-2 mb-3 py-2 px-3 shadow-sm no-print" style="max-width: 320px; width: 100%;">
+            <i class="bi bi-arrow-counterclockwise fs-4 text-warning"></i>
+            <div>
+                <strong class="d-block">فاتورة مرتجعة</strong>
+                <span class="small">تم إرجاع هذه الفاتورة وإعادة الأصناف للمخزن.</span>
+            </div>
+        </div>
+    }
+    else if (Model.Status == Doctor.Web.Models.Entities.SaleStatus.Cancelled)
+    {
+        <div class="alert alert-danger border-danger d-flex align-items-center gap-2 mb-3 py-2 px-3 shadow-sm no-print" style="max-width: 320px; width: 100%;">
+            <i class="bi bi-x-circle fs-4 text-danger"></i>
+            <div>
+                <strong class="d-block">فاتورة ملغاة</strong>
+                <span class="small">هذه الفاتورة ملغاة وغير محتسبة في الأرباح.</span>
+            </div>
+        </div>
+    }
+
+    <div class="thermal-receipt size-80mm shadow-sm" id="invoicePaper">
+        <!-- Store Header -->
+        <div class="text-center pb-1">
+            <div class="receipt-store-title">@centerName</div>
+            <div class="receipt-store-sub"><i class="bi bi-geo-alt me-1"></i>@centerAddress</div>
+            <div class="receipt-store-sub"><i class="bi bi-telephone me-1"></i>هاتف: @centerPhone</div>
+            @if (!string.IsNullOrEmpty(centerTax))
+            {
+                <div class="receipt-store-sub">س.ت / ر.ض: @centerTax</div>
+            }
+        </div>
+
+        <div class="receipt-dashed-line"></div>
+
+        <div class="text-center my-1">
+            <h6 class="fw-bold mb-0 text-dark">فاتورة مبيعات</h6>
+            <span class="text-muted font-monospace" style="font-size: 0.68rem;">Sales Receipt</span>
+        </div>
+
+        <div class="receipt-dashed-line"></div>
+
+        <!-- Meta info -->
+        <div class="receipt-meta-row">
+            <span class="text-muted">رقم الفاتورة:</span>
+            <strong class="font-monospace text-dark">@Model.InvoiceNumber</strong>
+        </div>
+        <div class="receipt-meta-row">
+            <span class="text-muted">التاريخ والوقت:</span>
+            <span>@Model.CreatedAt.ToString("yyyy/MM/dd HH:mm")</span>
+        </div>
+        <div class="receipt-meta-row">
+            <span class="text-muted">البائع:</span>
+            <span>@(Model.User != null ? Model.User.FullName : "النظام")</span>
+        </div>
+        <div class="receipt-meta-row">
+            <span class="text-muted">حالة الفاتورة:</span>
+            @if (Model.Status == Doctor.Web.Models.Entities.SaleStatus.Completed)
+            {
+                <span class="badge bg-success-subtle text-success border border-success-subtle py-0 px-2" style="font-size: 0.68rem;">مكتملة</span>
+            }
+            else if (Model.Status == Doctor.Web.Models.Entities.SaleStatus.Refunded)
+            {
+                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle py-0 px-2" style="font-size: 0.68rem;">مرتجعة</span>
+            }
+            else
+            {
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle py-0 px-2" style="font-size: 0.68rem;">ملغاة</span>
+            }
+        </div>
+        <div class="receipt-meta-row">
+            <span class="text-muted">العميل:</span>
+            <strong>@(Model.Customer != null ? $"{Model.Customer.Name}" : "عميل نقدي")</strong>
+        </div>
+        @if (Model.Customer != null && Model.Customer.PhoneNumber != "بدون هاتف" && !string.IsNullOrEmpty(Model.Customer.PhoneNumber))
+        {
+            <div class="receipt-meta-row">
+                <span class="text-muted">الهاتف:</span>
+                <span class="font-monospace">@Model.Customer.PhoneNumber</span>
+            </div>
+        }
+
+        <div class="receipt-dashed-line"></div>
+
+        <!-- Items Table -->
+        <table class="receipt-table w-100">
+            <thead>
+                <tr class="text-dark">
+                    <th class="text-start">الصنف</th>
+                    <th class="text-center" style="width: 30px;">ك</th>
+                    <th class="text-start" style="width: 50px;">السعر</th>
+                    <th class="text-start" style="width: 55px;">الإجمالي</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Items)
+                {
+                    <tr>
+                        <td class="text-start">
+                            <div class="fw-bold text-dark text-break">@item.Product.Name</div>
+                            @if (!string.IsNullOrEmpty(item.ItemDetails))
+                            {
+                                <div class="text-secondary" style="font-size: 0.68rem;">
+                                    @item.ItemDetails
+                                </div>
+                            }
+                            @if (!string.IsNullOrEmpty(item.ImeiOrSerialSnapshot))
+                            {
+                                <div class="text-muted font-monospace" style="font-size: 0.65rem;">S/N: @item.ImeiOrSerialSnapshot</div>
+                            }
+                        </td>
+                        <td class="text-center fw-bold align-top">@item.Quantity</td>
+                        <td class="text-start align-top text-nowrap">@item.UnitPrice.ToString("N0")</td>
+                        <td class="text-start fw-bold align-top text-nowrap">@item.TotalPrice.ToString("N0")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <!-- Totals Summary -->
+        <div class="receipt-total-box">
+            <div class="receipt-meta-row">
+                <span class="text-muted">المجموع الفرعي:</span>
+                <span>@Model.SubTotal.ToString("N2") ج.م</span>
+            </div>
+            @if (Model.DiscountAmount > 0)
+            {
+                <div class="receipt-meta-row text-danger">
+                    <span>إجمالي الخصم:</span>
+                    <span>-@Model.DiscountAmount.ToString("N2") ج.م</span>
+                </div>
+            }
+            <div class="receipt-dashed-line my-1"></div>
+            <div class="receipt-total-row py-1">
+                <span>الإجمالي النهائي:</span>
+                <span class="text-dark fs-6">@Model.TotalAmount.ToString("N2") ج.م</span>
+            </div>
+            <div class="receipt-dashed-line my-1"></div>
+            <div class="receipt-meta-row">
+                <span class="text-muted">طريقة الدفع:</span>
+                <span class="fw-bold">
+                    @switch (Model.PaymentMethod)
+                    {
+                        case Doctor.Web.Models.Entities.PaymentMethod.Cash:
+                            <span>نقدي (Cash)</span>
+                            break;
+                        case Doctor.Web.Models.Entities.PaymentMethod.InstaPay:
+                            <span>انستاباي (InstaPay)</span>
+                            break;
+                        case Doctor.Web.Models.Entities.PaymentMethod.Card:
+                            <span>بطاقة / فيزا</span>
+                            break;
+                        case Doctor.Web.Models.Entities.PaymentMethod.Transfer:
+                            <span>تحويل بنكي / محفظة</span>
+                            break;
+                        default:
+                            <span>@Model.PaymentMethod</span>
+                            break;
+                    }
+                </span>
+            </div>
+            @if (!string.IsNullOrEmpty(Model.PaymentReferenceNumber))
+            {
+                <div class="receipt-meta-row">
+                    <span class="text-muted">رقم التحويل:</span>
+                    <strong class="font-monospace">@Model.PaymentReferenceNumber</strong>
+                </div>
+            }
+            <div class="receipt-meta-row">
+                <span class="text-muted">المدفوع:</span>
+                <span class="fw-bold">@Model.PaidAmount.ToString("N2") ج.م</span>
+            </div>
+            @if (Model.RemainingAmount > 0)
+            {
+                <div class="receipt-meta-row text-danger fw-bold">
+                    <span>المتبقي:</span>
+                    <span>@Model.RemainingAmount.ToString("N2") ج.م</span>
+                </div>
+            }
+        </div>
+
+        <!-- Barcode & QR Code Section -->
+        <div class="text-center pt-1">
+            <!-- 1D Barcode -->
+            <div class="d-flex justify-content-center">
+                <svg id="invoiceBarcode" style="max-width: 100%; height: 42px;"></svg>
+            </div>
+
+            <!-- QR Code -->
+            @if (!string.IsNullOrEmpty(qrCode))
+            {
+                <div class="my-2 d-flex justify-content-center">
+                    <img src="@qrCode" alt="QR Code" style="width: 95px; height: 95px;" />
+                </div>
+            }
+
+            <div class="receipt-footer-msg fw-bold mt-2">شكرًا لتعاملكم مع @centerName</div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        if (typeof JsBarcode !== 'undefined') {
+            JsBarcode("#invoiceBarcode", "@Model.InvoiceNumber", {
+                format: "CODE128",
+                width: 1.5,
+                height: 35,
+                displayValue: true,
+                fontSize: 11,
+                font: "Cairo"
+            });
+        }
+    });
+
+    function setSize(size) {
+        const paper = document.getElementById('invoicePaper');
+        const btn80 = document.getElementById('btnSize80');
+        const btn58 = document.getElementById('btnSize58');
+        if (!paper) return;
+
+        if (size === '58mm') {
+            paper.className = 'thermal-receipt size-58mm shadow-sm';
+            if (btn58) { btn58.classList.add('active'); }
+            if (btn80) { btn80.classList.remove('active'); }
+        } else {
+            paper.className = 'thermal-receipt size-80mm shadow-sm';
+            if (btn80) { btn80.classList.add('active'); }
+            if (btn58) { btn58.classList.remove('active'); }
+        }
+    }
+
+    async function shareInvoiceAsImage() {
+        const invoiceElement = document.getElementById('invoicePaper');
+        const shareBtn = document.getElementById('shareImageBtn');
+        if (!invoiceElement) return;
+
+        try {
+            if (shareBtn) {
+                shareBtn.disabled = true;
+                shareBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> جاري تجهيز الصورة...';
+            }
+
+            const canvas = await html2canvas(invoiceElement, {
+                scale: 2,
+                backgroundColor: '#ffffff',
+                useCORS: true
+            });
+
+            canvas.toBlob(async function (blob) {
+                if (!blob) {
+                    alert('تعذر تحويل الفاتورة إلى صورة.');
+                    resetShareBtn();
+                    return;
+                }
+
+                const fileName = `Invoice_${"@Model.InvoiceNumber"}.png`;
+                const file = new File([blob], fileName, { type: 'image/png' });
+
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    try {
+                        await navigator.share({
+                            files: [file],
+                            title: 'فاتورة مبيعات',
+                            text: 'فاتورة شراء من ' + "@centerName"
+                        });
+                    } catch (err) {
+                        console.log('Share canceled or failed', err);
+                    }
+                } else {
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = fileName;
+                    link.click();
+                    URL.revokeObjectURL(link.href);
+
+                    const custPhone = "@(Model.Customer?.PhoneNumber != "بدون هاتف" ? Model.Customer?.PhoneNumber ?? "" : "")";
+                    const waUrl = custPhone
+                        ? `https://wa.me/${custPhone.replace(/\+/g, '').replace(/\s+/g, '')}`
+                        : `https://web.whatsapp.com/`;
+
+                    alert('تم حفظ صورة الفاتورة بنجاح على جهازك! جارِ فتح الواتساب لمشاركتها.');
+                    window.open(waUrl, '_blank');
+                }
+
+                resetShareBtn();
+            }, 'image/png');
+        } catch (error) {
+            console.error('Error generating image:', error);
+            alert('حدث خطأ أثناء استخراج صورة الفاتورة.');
+            resetShareBtn();
+        }
+    }
+
+    function resetShareBtn() {
+        const shareBtn = document.getElementById('shareImageBtn');
+        if (shareBtn) {
+            shareBtn.disabled = false;
+            shareBtn.innerHTML = '<i class="bi bi-whatsapp fs-5"></i> مشاركة واتساب';
+        }
+    }
+
+    function printThermal() {
+        window.print();
+    }
+</script>
+
+<style>
+.thermal-preview-container {
+    background-color: #f1f5f9;
+    padding: 1.5rem 1rem;
+    border-radius: 8px;
+    border: 1px dashed #cbd5e1;
+}
+
+@@media print {
+    @@page {
+        size: 80mm auto;
+        margin: 0;
+    }
+    html, body {
+        width: 80mm !important;
+        max-width: 80mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+        font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif !important;
+    }
+    .no-print,
+    .app-sidebar,
+    .app-topbar,
+    .app-footer,
+    .btn,
+    #sidebarOverlay {
+        display: none !important;
+    }
+    .thermal-preview-container {
+        padding: 0 !important;
+        margin: 0 !important;
+        background: transparent !important;
+        border: none !important;
+    }
+    .thermal-receipt {
+        width: 76mm !important;
+        max-width: 76mm !important;
+        margin: 0 auto !important;
+        padding: 2mm 1mm !important;
+        border: none !important;
+        box-shadow: none !important;
+        font-size: 8.5pt !important;
+        color: #000000 !important;
+    }
+    .thermal-receipt.size-58mm {
+        width: 54mm !important;
+        max-width: 54mm !important;
+        font-size: 7.5pt !important;
+    }
+    .thermal-receipt table {
+        font-size: 8pt !important;
+    }
+    .thermal-receipt svg,
+    .thermal-receipt img {
+        max-width: 100% !important;
+    }
+}
+</style>
+}
+

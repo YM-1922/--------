@@ -1,0 +1,56 @@
+@model Dictionary<string, string>
+@{
+    ViewData["Title"] = "إعدادات النظام والسنتر";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h3 class="fw-bold mb-1"><i class="bi bi-gear-fill text-primary ms-2"></i>إعدادات النظام والسنتر</h3>
+        <p class="text-muted small mb-0">تخصيص بيانات المركز الرئيسي، العنوان، رقم الهاتف، والعملة التي تظهر على الفواتير</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8 mx-auto">
+        <form asp-action="SaveSettings" method="post" class="card shadow-sm p-4">
+            @Html.AntiForgeryToken()
+
+            <!-- Center Info -->
+            <h5 class="fw-bold border-bottom pb-2 mb-3 text-primary">
+                <i class="bi bi-shop ms-2"></i>بيانات السنتر والفرع الرئيسي
+            </h5>
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold">اسم السنتر</label>
+                    <input type="text" name="settings[CenterName]" class="form-control" value="@Model.GetValueOrDefault("CenterName", "دكتور سنتر للهواتف الذكية والأجهزة")" required />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold">العملة</label>
+                    <input type="text" name="settings[Currency]" class="form-control" value="@Model.GetValueOrDefault("Currency", "ج.م")" required />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold">رقم الهاتف الرسمي</label>
+                    <input type="text" name="settings[CenterPhone]" class="form-control" value="@Model.GetValueOrDefault("CenterPhone", "01020304050")" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold">رقم واتساب المركز</label>
+                    <input type="text" name="settings[CenterWhatsApp]" class="form-control" value="@Model.GetValueOrDefault("CenterWhatsApp", "201020304050")" />
+                </div>
+                <div class="col-12">
+                    <label class="form-label small fw-bold">العنوان الكامل (يظهر بالفواتير)</label>
+                    <input type="text" name="settings[CenterAddress]" class="form-control" value="@Model.GetValueOrDefault("CenterAddress", "شارع التحرير - ميدان الدقي - الجيزة")" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold">الرقم الضريبي / السجل التجاري</label>
+                    <input type="text" name="settings[CenterTaxNumber]" class="form-control" value="@Model.GetValueOrDefault("CenterTaxNumber", "458-921-340")" />
+                </div>
+            </div>
+
+            <div class="text-end border-top pt-3">
+                <button type="submit" class="btn btn-primary px-4 shadow-sm fw-bold">
+                    <i class="bi bi-save ms-1"></i> حفظ كافة الإعدادات
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

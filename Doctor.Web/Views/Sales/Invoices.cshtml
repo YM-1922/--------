@@ -1,0 +1,231 @@
+@model List<Doctor.Web.Models.Entities.Sale>
+@{
+    ViewData["Title"] = "فواتير المبيعات";
+    int currentPage = ViewBag.CurrentPage ?? 1;
+    int totalPages = ViewBag.TotalPages ?? 1;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h3 class="fw-bold mb-1"><i class="bi bi-receipt text-primary ms-2"></i>فواتير المبيعات</h3>
+        <p class="text-muted small mb-0">استعراض، بحث، وطباعة فواتير المبيعات الصادرة</p>
+    </div>
+    <div class="d-flex gap-2">
+        @if (User.IsInRole("Admin"))
+        {
+            <form asp-controller="Admin" asp-action="ResetSales" method="post" onsubmit="return confirm('تنبيه هام جداً:\n\nهل أنت متاكد من تصفير وحذف كافة فواتير وسجلات المبيعات بالكامل؟\nهذا الإجراء لا يمكن التراجع عنه!');" class="d-inline">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-outline-danger btn-sm d-flex align-items-center gap-1 shadow-sm">
+                    <i class="bi bi-trash-fill"></i> تصفير المبيعات
+                </button>
+            </form>
+        }
+        <a href="@Url.Action("Pos", "Sales")" class="btn btn-primary btn-sm d-flex align-items-center gap-1 shadow-sm">
+            <i class="bi bi-cart-plus"></i> إنشاء فاتورة جديدة (POS)
+        </a>
+    </div>
+</div>
+
+<!-- Search & Filter Card -->
+<div class="card shadow-sm mb-4">
+    <div class="card-body p-3">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-md-4">
+                <input type="text" name="search" class="form-control form-control-sm" placeholder="بحث برقم الفاتورة، العميل، الهاتف، أو البائع..." value="@ViewBag.Search" />
+            </div>
+            <div class="col-md-2">
+                <input type="date" name="from" class="form-control form-control-sm" value="@ViewBag.From" />
+            </div>
+            <div class="col-md-2">
+                <input type="date" name="to" class="form-control form-control-sm" value="@ViewBag.To" />
+            </div>
+            <div class="col-md-2">
+                <select name="paymentMethod" class="form-select form-select-sm">
+                    <option value="">كافة طرق الدفع</option>
+                    <!option value="1" @(ViewBag.PaymentMethod?.ToString() == "Cash" ? "selected" : "")>نقدي (Cash)</!option>
+                    <!option value="5" @(ViewBag.PaymentMethod?.ToString() == "InstaPay" ? "selected" : "")>انستاباي (InstaPay)</!option>
+                    <!option value="2" @(ViewBag.PaymentMethod?.ToString() == "Card" ? "selected" : "")>بطاقة / فيزا</!option>
+                    <!option value="3" @(ViewBag.PaymentMethod?.ToString() == "Transfer" ? "selected" : "")>تحويل</!option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary btn-sm w-100">
+                    <i class="bi bi-filter ms-1"></i> تصفية
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Invoices Table -->
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light small">
+                <tr>
+                    <th>رقم الفاتورة</th>
+                    <th>التاريخ والوقت</th>
+                    <th>العميل</th>
+                    <th>البائع</th>
+                    <th>طريقة الدفع</th>
+                    <th>الإجمالي</th>
+                    <th>المدفوع</th>
+                    <th>المتبقي</th>
+                    <th>الحالة</th>
+                    <th>إجراء</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Any())
+                {
+                    foreach (var s in Model)
+                    {
+                        <tr>
+                            <td><strong class="text-primary font-monospace">@s.InvoiceNumber</strong></td>
+                            <td class="small text-muted">@s.CreatedAt.ToString("yyyy/MM/dd HH:mm")</td>
+                            <td>
+                                @if (s.Customer != null)
+                                {
+                                    <a href="@Url.Action("Details", "Customers", new { id = s.Customer.Id })" class="fw-bold text-dark text-decoration-none">
+                                        @s.Customer.Name
+                                    </a>
+                                    <div class="text-muted small">@s.Customer.PhoneNumber</div>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">عميل نقدي</span>
+                                }
+                            </td>
+                            <td>@s.User.FullName</td>
+                            <td>
+                                @switch (s.PaymentMethod)
+                                {
+                                    case Doctor.Web.Models.Entities.PaymentMethod.Cash:
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle">نقدي</span>
+                                        break;
+                                    case Doctor.Web.Models.Entities.PaymentMethod.InstaPay:
+                                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle"><i class="bi bi-lightning-charge-fill text-warning ms-1"></i>انستاباي</span>
+                                        break;
+                                    case Doctor.Web.Models.Entities.PaymentMethod.Card:
+                                        <span class="badge bg-info-subtle text-info border border-info-subtle">فيزا</span>
+                                        break;
+                                    case Doctor.Web.Models.Entities.PaymentMethod.Transfer:
+                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle">تحويل</span>
+                                        break;
+                                    default:
+                                        <span class="badge bg-light text-dark border">@s.PaymentMethod</span>
+                                        break;
+                                }
+                                @if (!string.IsNullOrEmpty(s.PaymentReferenceNumber))
+                                {
+                                    <div class="small text-muted font-monospace" style="font-size: 0.7rem;">@s.PaymentReferenceNumber</div>
+                                }
+                            </td>
+                            <td class="fw-bold fs-6">@s.TotalAmount.ToString("N2") ج.م</td>
+                            <td class="text-success">@s.PaidAmount.ToString("N2") ج.م</td>
+                            <td>
+                                @if (s.RemainingAmount > 0)
+                                {
+                                    <span class="text-danger fw-bold">@s.RemainingAmount.ToString("N2") ج.م</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">-</span>
+                                }
+                            </td>
+                            <td>
+                                @if (s.Status == Doctor.Web.Models.Entities.SaleStatus.Completed)
+                                {
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                        <i class="bi bi-check-circle me-1"></i>مكتملة
+                                    </span>
+                                }
+                                else if (s.Status == Doctor.Web.Models.Entities.SaleStatus.Refunded)
+                                {
+                                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">
+                                        <i class="bi bi-arrow-counterclockwise me-1"></i>مرتجعة
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle">
+                                        <i class="bi bi-x-circle me-1"></i>ملغاة
+                                    </span>
+                                }
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a href="@Url.Action("Invoice", "Sales", new { id = s.InvoiceNumber })" class="btn btn-outline-primary" title="عرض وطباعة">
+                                        <i class="bi bi-printer ms-1"></i> الفاتورة
+                                    </a>
+                                    <button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <span class="visually-hidden">خيارات</span>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                        <li>
+                                            <a class="dropdown-item py-2" href="@Url.Action("Invoice", "Sales", new { id = s.InvoiceNumber })">
+                                                <i class="bi bi-eye text-primary ms-2"></i> معاينة وطباعة
+                                            </a>
+                                        </li>
+                                        @if (s.Status == Doctor.Web.Models.Entities.SaleStatus.Completed)
+                                        {
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <form asp-controller="Sales" asp-action="ReturnInvoice" method="post" onsubmit="return confirm('تأكيد استرجاع الفاتورة رقم (@s.InvoiceNumber)؟\n\n- سيتم تسجيل الفاتورة كـ (مرتجعة).\n- ستتم إعادة كافة الأجهزة والمنتجات إلى المخزن فوراً لتكون متاحة للبيع.');">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="id" value="@s.Id" />
+                                                    <button type="submit" class="dropdown-item text-warning-emphasis py-2">
+                                                        <i class="bi bi-arrow-counterclockwise text-warning ms-2"></i> إرجاع الفاتورة للمخزن (مرتجع)
+                                                    </button>
+                                                </form>
+                                            </li>
+                                        }
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li>
+                                            <form asp-controller="Sales" asp-action="DeleteInvoice" method="post" onsubmit="return confirm('تحذير نهائي:\n\nهل أنت متأكد من حذف الفاتورة رقم (@s.InvoiceNumber) نهائياً من النظام؟\n\n- ستتم إعادة كافة الأجهزة والأصناف إلى المخزن تلقائياً.\n- سيتم حذف الفاتورة والمدفوعات الخاصة بها تماماً.');">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@s.Id" />
+                                                <input type="hidden" name="returnStock" value="true" />
+                                                <button type="submit" class="dropdown-item text-danger py-2">
+                                                    <i class="bi bi-trash3 text-danger ms-2"></i> حذف الفاتورة نهائياً مع إرجاع الأصناف
+                                                </button>
+                                            </form>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="10" class="text-center py-4 text-muted small">لم يتم العثور على أي فواتير</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    @if (totalPages > 1)
+    {
+        <div class="card-footer bg-white py-2 d-flex justify-content-between align-items-center">
+            <span class="text-muted small">الصفحة @currentPage من @totalPages</span>
+            <ul class="pagination pagination-sm mb-0">
+                <li class="page-item @(currentPage <= 1 ? "disabled" : "")">
+                    <a class="page-link" href="@Url.Action("Invoices", new { page = currentPage - 1, search = ViewBag.Search, from = ViewBag.From, to = ViewBag.To, paymentMethod = ViewBag.PaymentMethod })">&raquo;</a>
+                </li>
+                @for (int p = 1; p <= totalPages; p++)
+                {
+                    <li class="page-item @(p == currentPage ? "active" : "")">
+                        <a class="page-link" href="@Url.Action("Invoices", new { page = p, search = ViewBag.Search, from = ViewBag.From, to = ViewBag.To, paymentMethod = ViewBag.PaymentMethod })">@p</a>
+                    </li>
+                }
+                <li class="page-item @(currentPage >= totalPages ? "disabled" : "")">
+                    <a class="page-link" href="@Url.Action("Invoices", new { page = currentPage + 1, search = ViewBag.Search, from = ViewBag.From, to = ViewBag.To, paymentMethod = ViewBag.PaymentMethod })">&laquo;</a>
+                </li>
+            </ul>
+        </div>
+    }
+</div>

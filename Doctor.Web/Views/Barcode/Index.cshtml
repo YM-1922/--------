@@ -1,0 +1,214 @@
+@{
+    ViewData["Title"] = "مركز وتوليد الباركود";
+    var products = ViewBag.Products as List<Doctor.Web.Models.Entities.Product> ?? new();
+    var spareParts = ViewBag.SpareParts as List<Doctor.Web.Models.Entities.SparePart> ?? new();
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h3 class="fw-bold mb-1"><i class="bi bi-upc-scan text-primary ms-2"></i>مركز وتوليد وطباعة الباركود</h3>
+        <p class="text-muted small mb-0">إنشاء وتصميم ملصقات الباركود للمنتجات والأجهزة وقطع الغيار وطباعتها فردياً أو بكميات مجمعة</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Config Panel -->
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100 p-4">
+            <h5 class="fw-bold mb-3 text-primary border-bottom pb-2">
+                <i class="bi bi-sliders ms-2"></i>إعداد ملصق الباركود
+            </h5>
+
+            <!-- Source Selector -->
+            <div class="mb-3">
+                <label class="form-label small fw-bold">اختر نوع الصنف</label>
+                <div class="btn-group w-100" role="group">
+                    <input type="radio" class="btn-check" name="itemType" id="typeProduct" autocomplete="off" checked onchange="switchItemSource('products')">
+                    <label class="btn btn-outline-primary btn-sm" for="typeProduct">الهواتف والأجهزة</label>
+
+                    <input type="radio" class="btn-check" name="itemType" id="typeSparePart" autocomplete="off" onchange="switchItemSource('spareParts')">
+                    <label class="btn btn-outline-primary btn-sm" for="typeSparePart">قطع الغيار</label>
+                </div>
+            </div>
+
+            <!-- Products Select -->
+            <div class="mb-3" id="productSelectDiv">
+                <label class="form-label small fw-bold">اختر المنتج</label>
+                <select class="form-select" id="productSelect" onchange="onProductSelected()">
+                    <option value="">-- اختر صنفاً --</option>
+                    @foreach (var p in products)
+                    {
+                        <option value="@p.Barcode" data-name="@p.Name" data-price="@p.SellingPrice" data-model="@p.Model">
+                            @p.Name (باركود: @p.Barcode)
+                        </option>
+                    }
+                </select>
+            </div>
+
+            <!-- Spare Parts Select (Hidden by default) -->
+            <div class="mb-3 d-none" id="sparePartSelectDiv">
+                <label class="form-label small fw-bold">اختر قطعة الغيار</label>
+                <select class="form-select" id="sparePartSelect" onchange="onSparePartSelected()">
+                    <option value="">-- اختر قطعة غيار --</option>
+                    @foreach (var sp in spareParts)
+                    {
+                        <option value="@sp.Barcode" data-name="@sp.Name" data-price="@sp.SellingPrice" data-model="@sp.CompatibleModel">
+                            @sp.Name - @sp.CompatibleModel (باركود: @sp.Barcode)
+                        </option>
+                    }
+                </select>
+            </div>
+
+            <!-- Manual Custom Barcode Input -->
+            <div class="row g-2 mb-3">
+                <div class="col-12">
+                    <label class="form-label small fw-bold">نص / اسم الملصق</label>
+                    <input type="text" id="labelNameInput" class="form-control" placeholder="اسم المنتج على الملصق" oninput="updateBarcodePreview()" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold">رمز الباركود</label>
+                    <input type="text" id="labelBarcodeInput" class="form-control font-monospace" placeholder="123456789" oninput="updateBarcodePreview()" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold">سعر البيع (ج.م)</label>
+                    <input type="number" id="labelPriceInput" class="form-control fw-bold" placeholder="0" oninput="updateBarcodePreview()" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold">الموديل (اختياري)</label>
+                    <input type="text" id="labelModelInput" class="form-control" placeholder="الموديل" oninput="updateBarcodePreview()" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold">عدد الملصقات المطلوب طباعتها</label>
+                    <input type="number" id="labelCountInput" class="form-control fw-bold text-center" value="1" min="1" max="100" />
+                </div>
+            </div>
+
+            <div class="text-end pt-3 border-top">
+                <button type="button" class="btn btn-primary px-4 shadow-sm" onclick="submitPrintLabels()">
+                    <i class="bi bi-printer-fill ms-1"></i> طباعة ملصقات الباركود
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live Preview Panel -->
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100 p-4 text-center d-flex flex-column justify-content-between">
+            <div>
+                <h5 class="fw-bold mb-3 text-dark border-bottom pb-2">
+                    <i class="bi bi-eye ms-2"></i>معاينة الملصق المباشرة (Live Preview)
+                </h5>
+
+                <!-- Sticker Preview Card -->
+                <div class="d-inline-block border border-2 border-dark rounded p-3 bg-white shadow-sm mt-3" style="width: 280px; min-height: 150px;">
+                    <div class="fw-bold small text-muted mb-1" style="font-size: 0.72rem;">دكتور سنتر للموبايلات</div>
+                    <div class="fw-bold text-dark text-truncate mb-1" id="previewName" style="font-size: 0.85rem;">اختر منتجاً للمعاينة</div>
+                    <div class="text-muted small mb-2" id="previewModel" style="font-size: 0.7rem;">-</div>
+
+                    <!-- 1D Barcode SVG -->
+                    <div class="py-1">
+                        <svg id="previewBarcodeSvg" style="max-width: 100%; height: 50px;"></svg>
+                    </div>
+
+                    <div class="fw-bold fs-6 text-primary mt-1" id="previewPrice">0.00 ج.م</div>
+                </div>
+            </div>
+
+            <div class="alert alert-light border small text-muted mt-4 mb-0">
+                <i class="bi bi-info-circle text-primary ms-1"></i>
+                متوافق مع جميع طابعات الباركود الحرارية (Xprinter, Zebra, Bixolon) مقاس 38&times;25mm و 50&times;30mm وكذلك ورق الملصقات A4.
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function switchItemSource(source) {
+        if (source === 'products') {
+            document.getElementById('productSelectDiv').classList.remove('d-none');
+            document.getElementById('sparePartSelectDiv').classList.add('d-none');
+        } else {
+            document.getElementById('productSelectDiv').classList.add('d-none');
+            document.getElementById('sparePartSelectDiv').classList.remove('d-none');
+        }
+    }
+
+    function onProductSelected() {
+        const select = document.getElementById('productSelect');
+        const opt = select.options[select.selectedIndex];
+        if (!opt.value) return;
+
+        document.getElementById('labelNameInput').value = opt.getAttribute('data-name') || '';
+        document.getElementById('labelBarcodeInput').value = opt.value;
+        document.getElementById('labelPriceInput').value = opt.getAttribute('data-price') || '';
+        document.getElementById('labelModelInput').value = opt.getAttribute('data-model') || '';
+
+        updateBarcodePreview();
+    }
+
+    function onSparePartSelected() {
+        const select = document.getElementById('sparePartSelect');
+        const opt = select.options[select.selectedIndex];
+        if (!opt.value) return;
+
+        document.getElementById('labelNameInput').value = opt.getAttribute('data-name') || '';
+        document.getElementById('labelBarcodeInput').value = opt.value;
+        document.getElementById('labelPriceInput').value = opt.getAttribute('data-price') || '';
+        document.getElementById('labelModelInput').value = opt.getAttribute('data-model') || '';
+
+        updateBarcodePreview();
+    }
+
+    function updateBarcodePreview() {
+        const name = document.getElementById('labelNameInput').value.trim() || 'اسم المنتج';
+        const barcode = document.getElementById('labelBarcodeInput').value.trim() || '123456789';
+        const price = parseFloat(document.getElementById('labelPriceInput').value) || 0;
+        const model = document.getElementById('labelModelInput').value.trim();
+
+        document.getElementById('previewName').innerText = name;
+        document.getElementById('previewModel').innerText = model || '-';
+        document.getElementById('previewPrice').innerText = price.toLocaleString() + ' ج.م';
+
+        try {
+            JsBarcode("#previewBarcodeSvg", barcode, {
+                format: "CODE128",
+                width: 1.5,
+                height: 40,
+                displayValue: true,
+                fontSize: 11,
+                font: "Cairo"
+            });
+        } catch (e) {
+            console.error('Barcode render error:', e);
+        }
+    }
+
+    function submitPrintLabels() {
+        const barcode = document.getElementById('labelBarcodeInput').value.trim();
+        const name = document.getElementById('labelNameInput').value.trim();
+        const price = document.getElementById('labelPriceInput').value.trim();
+        const count = document.getElementById('labelCountInput').value.trim() || 1;
+        const model = document.getElementById('labelModelInput').value.trim();
+
+        if (!barcode || !name) {
+            alert('يرجى اختيار صنف أو إدخال الاسم والباركود');
+            return;
+        }
+
+        const url = `/Barcode/PrintLabels?barcode=${encodeURIComponent(barcode)}&name=${encodeURIComponent(name)}&price=${encodeURIComponent(price)}&count=${count}&model=${encodeURIComponent(model)}`;
+        window.open(url, '_blank');
+    }
+
+    // Initial default render
+    document.addEventListener('DOMContentLoaded', function () {
+        const firstOpt = document.querySelector('#productSelect option[value]:not([value=""])');
+        if (firstOpt) {
+            document.getElementById('productSelect').value = firstOpt.value;
+            onProductSelected();
+        } else {
+            updateBarcodePreview();
+        }
+    });
+</script>
+}

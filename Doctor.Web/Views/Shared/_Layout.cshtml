@@ -1,0 +1,393 @@
+@using System.Security.Claims
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - دكتور | إدارة الموبايلات والمبيعات</title>
+
+    <!-- Local Bootstrap 5 RTL -->
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.rtl.min.css" />
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Custom Design System -->
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+    <div class="app-layout">
+        @{
+            var userRole = User.FindFirstValue(ClaimTypes.Role) ?? "Admin";
+            var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+            var currentAction = ViewContext.RouteData.Values["action"]?.ToString() ?? "";
+        }
+
+        <!-- Top Navigation Bar -->
+        <header class="app-navbar-wrapper sticky-top">
+            <nav class="navbar navbar-expand-lg navbar-dark app-navbar py-2 px-3 px-lg-4 shadow-sm">
+                <div class="container-fluid p-0 d-flex align-items-center justify-content-between">
+                    <!-- Brand & Mobile Toggle -->
+                    <div class="d-flex align-items-center gap-2">
+                        <!-- Mobile Hamburger Button -->
+                        <button class="navbar-toggler border-0 p-1 text-white d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileNavOffcanvas" aria-controls="mobileNavOffcanvas" aria-label="القائمة">
+                            <i class="bi bi-list fs-3"></i>
+                        </button>
+
+                        <!-- Brand Logo -->
+                        <a href="@Url.Action("Index", userRole == "Admin" ? "Admin" : "Sales")" class="navbar-brand d-flex align-items-center gap-2 m-0 p-0 text-decoration-none">
+                            <div class="brand-logo-box">
+                                <i class="bi bi-phone"></i>
+                            </div>
+                            <div class="d-flex flex-column">
+                                <span class="brand-title">دكتور</span>
+                                <span class="brand-subtitle d-none d-sm-inline">سنتر الموبايلات والمبيعات</span>
+                            </div>
+                        </a>
+                    </div>
+
+                    <!-- Desktop Nav Links (Visible on >= lg) -->
+                    <div class="d-none d-lg-flex align-items-center gap-1 gap-xxl-2 mx-auto app-desktop-menu">
+                        @if (userRole == "Admin")
+                        {
+                            <a href="@Url.Action("Index", "Admin")" class="nav-item-link @(currentController == "Admin" && currentAction == "Index" ? "active" : "")">
+                                <i class="bi bi-house-door-fill"></i>
+                                <span>الرئيسية</span>
+                            </a>
+                        }
+
+                        @if (userRole == "Admin" || userRole == "Sales")
+                        {
+                            <a href="@Url.Action("Pos", "Sales")" class="nav-item-link @(currentController == "Sales" && (currentAction == "Pos" || currentAction == "Index") ? "active" : "")">
+                                <i class="bi bi-cart3"></i>
+                                <span>الكاشير</span>
+                            </a>
+
+                            <a href="@Url.Action("Products", "Sales")" class="nav-item-link @(currentController == "Sales" && (currentAction == "Products" || currentAction == "CreateProduct" || currentAction == "EditProduct") ? "active" : "")">
+                                <i class="bi bi-phone-fill"></i>
+                                <span>الأجهزة</span>
+                            </a>
+
+                            <a href="@Url.Action("Index", "Customers")" class="nav-item-link @(currentController == "Customers" ? "active" : "")">
+                                <i class="bi bi-people-fill"></i>
+                                <span>العملاء</span>
+                            </a>
+
+                            <a href="@Url.Action("Index", "Suppliers")" class="nav-item-link @(currentController == "Suppliers" ? "active" : "")">
+                                <i class="bi bi-truck"></i>
+                                <span>الموردون</span>
+                            </a>
+
+                            <a href="@Url.Action("Invoices", "Sales")" class="nav-item-link @(currentController == "Sales" && currentAction == "Invoices" ? "active" : "")">
+                                <i class="bi bi-receipt"></i>
+                                <span>الفواتير</span>
+                            </a>
+                        }
+
+                        @if (userRole == "Admin")
+                        {
+                            <a href="@Url.Action("Reports", "Admin")" class="nav-item-link @(currentController == "Admin" && currentAction == "Reports" ? "active" : "")">
+                                <i class="bi bi-bar-chart-line-fill"></i>
+                                <span>التقارير</span>
+                            </a>
+
+                            <a href="@Url.Action("Settings", "Admin")" class="nav-item-link @(currentController == "Admin" && currentAction == "Settings" ? "active" : "")">
+                                <i class="bi bi-gear-fill"></i>
+                                <span>الإعدادات</span>
+                            </a>
+                        }
+                    </div>
+
+                    <!-- Left / Quick Actions: Search, Scanner, Notifications, User Profile -->
+                    <div class="d-flex align-items-center gap-2">
+                        <!-- Camera Barcode Scanner Quick Button -->
+                        <button type="button" class="btn btn-outline-info btn-sm rounded-pill d-flex align-items-center gap-1 py-1 px-2 px-sm-3" onclick="openCameraScanner(handleScannedBarcode)" title="مسح بكاميرا الهاتف">
+                            <i class="bi bi-camera-fill"></i>
+                            <span class="d-none d-md-inline small fw-bold">مسح بكاميرا</span>
+                        </button>
+
+
+                        <!-- User Profile Dropdown -->
+                        <div class="dropdown position-relative">
+                            <div class="topbar-user-menu" data-bs-toggle="dropdown" aria-expanded="false" role="button">
+                                <div class="user-avatar-circle">
+                                    @(User.FindFirst("FullName")?.Value?.FirstOrDefault() ?? 'أ')
+                                </div>
+                                <div class="d-none d-md-block text-start">
+                                    <div class="user-name">@(User.FindFirst("FullName")?.Value ?? (User.Identity?.Name == "admin" ? "أحمد محمد" : User.Identity?.Name))</div>
+                                    <div class="user-role">@(User.FindFirst("RoleAr")?.Value ?? (userRole == "Admin" ? "المدير العام" : userRole))</div>
+                                </div>
+                                <i class="bi bi-chevron-down text-muted small me-1"></i>
+                            </div>
+                            <ul class="dropdown-menu dropdown-menu-start shadow-lg border-0 py-2 mt-2">
+                                <li class="px-3 py-2 border-bottom text-muted small">
+                                    <div>المستخدم: <strong>@(User.Identity?.Name)</strong></div>
+                                    <div>الدور: <strong class="text-primary">@(User.FindFirst("RoleAr")?.Value ?? userRole)</strong></div>
+                                </li>
+                                @if (userRole == "Admin")
+                                {
+                                    <li><a class="dropdown-item" href="@Url.Action("Settings", "Admin")"><i class="bi bi-gear ms-2 text-primary"></i>إعدادات السنتر</a></li>
+                                    <li><a class="dropdown-item" href="@Url.Action("Reports", "Admin")"><i class="bi bi-bar-chart ms-2 text-info"></i>التقارير المالية</a></li>
+                                }
+                                <li><a class="dropdown-item" href="@Url.Action("Pos", "Sales")"><i class="bi bi-cart3 ms-2 text-success"></i>شاشة الكاشير (POS)</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="@Url.Action("Logout", "Account")"><i class="bi bi-box-arrow-left ms-2"></i>تسجيل الخروج</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+        </header>
+
+        <!-- Mobile Offcanvas Menu (Responsive for Phones & Tablets) -->
+        <div class="offcanvas offcanvas-start bg-dark text-white shadow-lg" tabindex="-1" id="mobileNavOffcanvas" aria-labelledby="mobileNavOffcanvasLabel" style="width: 290px; background-color: #111827 !important;">
+            <div class="offcanvas-header border-bottom border-secondary border-opacity-25 py-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="brand-logo-box" style="width: 38px; height: 38px; font-size: 1.2rem;">
+                        <i class="bi bi-phone"></i>
+                    </div>
+                    <div>
+                        <h6 class="offcanvas-title fw-bold mb-0 text-white" id="mobileNavOffcanvasLabel">دكتور سنتر</h6>
+                        <small class="text-muted" style="font-size: 0.75rem;">إدارة الأجهزة والمبيعات</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="إغلاق"></button>
+            </div>
+            <div class="offcanvas-body p-3 d-flex flex-column justify-content-between">
+                <!-- Mobile Navigation Links -->
+                <div class="d-flex flex-column gap-1">
+                    @if (userRole == "Admin")
+                    {
+                        <a href="@Url.Action("Index", "Admin")" class="mobile-nav-link @(currentController == "Admin" && currentAction == "Index" ? "active" : "")">
+                            <i class="bi bi-house-door-fill ms-2"></i>
+                            <span>الرئيسية</span>
+                        </a>
+                    }
+
+                    @if (userRole == "Admin" || userRole == "Sales")
+                    {
+                        <a href="@Url.Action("Pos", "Sales")" class="mobile-nav-link @(currentController == "Sales" && (currentAction == "Pos" || currentAction == "Index") ? "active" : "")">
+                            <i class="bi bi-cart3 ms-2"></i>
+                            <span>الكاشير والمبيعات (POS)</span>
+                        </a>
+
+                        <a href="@Url.Action("Products", "Sales")" class="mobile-nav-link @(currentController == "Sales" && (currentAction == "Products" || currentAction == "CreateProduct" || currentAction == "EditProduct") ? "active" : "")">
+                            <i class="bi bi-phone-fill ms-2"></i>
+                            <span>الأجهزة والمخزون</span>
+                        </a>
+
+                        <a href="@Url.Action("Index", "Customers")" class="mobile-nav-link @(currentController == "Customers" ? "active" : "")">
+                            <i class="bi bi-people-fill ms-2"></i>
+                            <span>العملاء والحسابات</span>
+                        </a>
+
+                        <a href="@Url.Action("Index", "Suppliers")" class="mobile-nav-link @(currentController == "Suppliers" ? "active" : "")">
+                            <i class="bi bi-truck ms-2"></i>
+                            <span>الموردون وحساباتهم</span>
+                        </a>
+
+                        <a href="@Url.Action("Invoices", "Sales")" class="mobile-nav-link @(currentController == "Sales" && currentAction == "Invoices" ? "active" : "")">
+                            <i class="bi bi-receipt ms-2"></i>
+                            <span>سجل الفواتير</span>
+                        </a>
+                    }
+
+                    @if (userRole == "Admin")
+                    {
+                        <a href="@Url.Action("Reports", "Admin")" class="mobile-nav-link @(currentController == "Admin" && currentAction == "Reports" ? "active" : "")">
+                            <i class="bi bi-bar-chart-line-fill ms-2"></i>
+                            <span>التقارير المالية</span>
+                        </a>
+
+                        <a href="@Url.Action("Settings", "Admin")" class="mobile-nav-link @(currentController == "Admin" && currentAction == "Settings" ? "active" : "")">
+                            <i class="bi bi-gear-fill ms-2"></i>
+                            <span>الإعدادات</span>
+                        </a>
+                    }
+                </div>
+
+                <!-- User Footer in Mobile Offcanvas -->
+                <div class="pt-3 border-top border-secondary border-opacity-25 mt-4">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="user-avatar-circle" style="width: 38px; height: 38px;">
+                                @(User.FindFirst("FullName")?.Value?.FirstOrDefault() ?? 'أ')
+                            </div>
+                            <div>
+                                <div class="fw-bold text-white small">@(User.FindFirst("FullName")?.Value ?? User.Identity?.Name)</div>
+                                <small class="text-info" style="font-size: 0.72rem;">@(User.FindFirst("RoleAr")?.Value ?? userRole)</small>
+                            </div>
+                        </div>
+                        <a href="@Url.Action("Logout", "Account")" class="btn btn-outline-danger btn-sm p-1 px-2" title="تسجيل الخروج">
+                            <i class="bi bi-box-arrow-left fs-5"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Workspace -->
+        <div class="app-main-content">
+            <!-- Page Body Content -->
+            <main class="content-body py-3 px-2 px-md-4">
+                <!-- System Alerts -->
+                @if (TempData["Success"] != null)
+                {
+                    <div class="alert alert-success alert-dismissible fade show shadow-sm d-flex align-items-center mb-3" role="alert">
+                        <i class="bi bi-check-circle-fill fs-5 ms-2 text-success"></i>
+                        <div class="flex-grow-1">@TempData["Success"]</div>
+                        @if (TempData["WhatsAppUrl"] != null)
+                        {
+                            <a href="@TempData["WhatsAppUrl"]" target="_blank" class="btn btn-sm btn-success me-3">
+                                <i class="bi bi-whatsapp ms-1"></i> فتح محادثة واتساب الآن
+                            </a>
+                        }
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                }
+
+                @if (TempData["Error"] != null)
+                {
+                    <div class="alert alert-danger alert-dismissible fade show shadow-sm d-flex align-items-center mb-3" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill fs-5 ms-2 text-danger"></i>
+                        <div class="flex-grow-1">@TempData["Error"]</div>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                }
+
+                @RenderBody()
+            </main>
+
+            <!-- Footer matching Mockup -->
+            <footer class="app-footer d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <span>جميع الحقوق محفوظة لنظام <strong>دكتور</strong> &copy; 2025 v1.0.0</span>
+                </div>
+                <div>
+                    <span class="text-danger">صنع بـ ❤️</span> لخدمة عملائنا الكرام
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Camera Barcode Scanner Modal -->
+    <div class="modal fade" id="cameraScannerModal" tabindex="-1" aria-labelledby="cameraScannerModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-dark text-white py-2 px-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="bg-primary text-white rounded-circle p-1 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                            <i class="bi bi-camera-fill"></i>
+                        </div>
+                        <div>
+                            <h6 class="modal-title mb-0 fw-bold fs-6" id="cameraScannerModalLabel">ماسح الباركود بالكاميرا</h6>
+                            <span class="text-white-50 small" style="font-size: 0.72rem;">يدعم الهواتف، اللابتوب، وأجهزة الاسكانر</span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <!-- Camera selector & Torch controls -->
+                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                        <div class="flex-grow-1">
+                            <select id="scannerCameraSelect" class="form-select form-select-sm" style="font-size: 0.82rem;" onchange="onScannerCameraChange(this.value)">
+                                <option value="">جاري اكتشاف الكاميرات المتاحة...</option>
+                            </select>
+                        </div>
+                        <button type="button" id="scannerTorchBtn" class="btn btn-outline-warning btn-sm d-none" onclick="toggleScannerTorch()" title="تشغيل / إيقاف الفلاش">
+                            <i class="bi bi-lightbulb-fill"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="restartScanner()" title="إعادة تشغيل الكاميرا">
+                            <i class="bi bi-arrow-repeat"></i>
+                        </button>
+                    </div>
+
+                    <!-- Video Viewfinder Container -->
+                    <div class="position-relative bg-black rounded-3 overflow-hidden shadow-inner mb-2 scanner-viewport-box" style="min-height: 280px; max-height: 380px;">
+                        <div id="scannerInteractive" class="viewport position-relative w-100 h-100" style="min-height: 280px; max-height: 380px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                            <video id="scannerVideo" playsinline autoplay muted style="width: 100%; height: 100%; object-fit: contain; background: #000;"></video>
+                        </div>
+                        <div id="scannerAimOverlay" class="scanner-aim-frame">
+                            <div class="scanner-laser-line"></div>
+                        </div>
+                    </div>
+
+                    <div id="scannerStatusMsg" class="alert alert-info py-1 px-2 small text-center mb-2" style="font-size: 0.8rem;">
+                        <i class="bi bi-info-circle ms-1"></i> وجّه الكاميرا بشكل مستقيم نحو الباركود أو رمز QR
+                    </div>
+
+                    <!-- Fallback: Photo scan & Manual entry -->
+                    <div class="border-top pt-2 mt-2">
+                        <div class="row g-2 align-items-center">
+                            <div class="col-12 col-sm-6">
+                                <input type="file" id="scannerFileInput" accept="image/*" class="d-none" onchange="handleImageFileScan(this)" />
+                                <button type="button" class="btn btn-outline-primary btn-sm w-100 d-flex align-items-center justify-content-center gap-1" onclick="document.getElementById('scannerFileInput').click()">
+                                    <i class="bi bi-image"></i>
+                                    <span>مسح من صورة بالمعرض</span>
+                                </button>
+                            </div>
+                            <div class="col-12 col-sm-6">
+                                <div class="input-group input-group-sm">
+                                    <input type="text" id="scannerManualInput" class="form-control" placeholder="أو اكتب الرقم يدوياً..." autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();submitManualScan();}" />
+                                    <button type="button" class="btn btn-primary" onclick="submitManualScan()">إدخال</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2 px-3 justify-content-between">
+                    <span class="small text-muted" style="font-size: 0.75rem;"><i class="bi bi-check-circle-fill text-success ms-1"></i>قراءة فورية لجميع الباركودات</span>
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">إغلاق</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container position-fixed bottom-0 start-0 p-3" style="z-index: 9999;"></div>
+
+    <!-- Core JavaScript Libraries -->
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+    <script src="~/lib/quagga.min.js" asp-append-version="true"></script>
+    <script src="~/lib/zxing.min.js" asp-append-version="true"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+
+    <script>
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {});
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        }
+
+        // Ctrl + K keyboard shortcut to focus global search
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+                e.preventDefault();
+                var searchInput = document.getElementById('globalSearchInput');
+                if (searchInput) {
+                    searchInput.focus();
+                    searchInput.select();
+                }
+            }
+        });
+
+        // Global scanner handler fallback (redirects or populates if not on POS)
+        function handleScannedBarcode(barcode) {
+            console.log('Scanned:', barcode);
+            if (window.handlePosBarcode) {
+                window.handlePosBarcode(barcode);
+            } else {
+                window.location.href = `/Sales/Products?search=${encodeURIComponent(barcode)}`;
+            }
+        }
+    </script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

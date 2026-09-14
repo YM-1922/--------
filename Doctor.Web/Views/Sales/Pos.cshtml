@@ -1,0 +1,1554 @@
+@{
+    ViewData["Title"] = "نقطة البيع والكاشير (POS)";
+    var quickProducts = ViewBag.QuickProducts as List<Doctor.Web.Models.Entities.Product> ?? new();
+    var categories = ViewBag.Categories as List<Doctor.Web.Models.Entities.ProductCategory> ?? new();
+    var brands = ViewBag.Brands as List<Doctor.Web.Models.Entities.Brand> ?? new();
+}
+
+<!-- Cashier Shift & Cash Drawer Live Bar -->
+<div class="card shadow-sm border-0 mb-3 bg-dark text-white rounded-3 p-2 px-3 d-flex flex-row align-items-center justify-content-between flex-wrap gap-2" id="posShiftBar" style="background: linear-gradient(135deg, #0f172a, #1e293b) !important;">
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        <span id="shiftStatusIndicator" class="badge bg-success p-2 px-3 rounded-pill d-flex align-items-center gap-1">
+            <i class="bi bi-circle-fill" style="font-size: 0.55rem;"></i>
+            <span id="shiftStatusBadgeText">جاري فحص الوردية...</span>
+        </span>
+        <div class="vr bg-white opacity-25 mx-1 d-none d-sm-block" style="height: 18px;"></div>
+        <div class="d-flex align-items-center gap-1 small">
+            <span class="text-white-50">بداية اليوم:</span>
+            <strong class="text-warning" id="shiftStartingCashText">0.00 ج.م</strong>
+        </div>
+        <div class="vr bg-white opacity-25 mx-1 d-none d-sm-block" style="height: 18px;"></div>
+        <div class="d-flex align-items-center gap-1 small">
+            <span class="text-white-50">كاش الدرج:</span>
+            <strong class="text-success" id="shiftCashSalesText">0.00 ج.م</strong>
+        </div>
+        <div class="vr bg-white opacity-25 mx-1 d-none d-sm-block" style="height: 18px;"></div>
+        <div class="d-flex align-items-center gap-1 small">
+            <span class="text-white-50"><i class="bi bi-lightning-charge-fill text-warning ms-1"></i>انستاباي:</span>
+            <strong class="text-warning" id="shiftInstaPaySalesText">0.00 ج.م</strong>
+        </div>
+        <div class="vr bg-white opacity-25 mx-1 d-none d-sm-block" style="height: 18px;"></div>
+        <div class="d-flex align-items-center gap-1 small">
+            <span class="text-white-50"><i class="bi bi-credit-card-2-front text-info ms-1"></i>فيزا:</span>
+            <strong class="text-info" id="shiftVisaSalesText">0.00 ج.م</strong>
+        </div>
+        <div class="vr bg-white opacity-25 mx-1 d-none d-sm-block" style="height: 18px;"></div>
+        <div class="d-flex align-items-center gap-1 small">
+            <span class="text-white-50">المتوقع كاش:</span>
+            <strong class="text-info fs-6" id="shiftExpectedCashText">0.00 ج.م</strong>
+        </div>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <button type="button" id="btnOpenShiftModal" class="btn btn-warning btn-sm fw-bold d-none shadow-sm" onclick="openStartShiftModal()">
+            <i class="bi bi-cash-stack ms-1"></i> فتح وردية اليوم
+        </button>
+        <button type="button" id="btnCloseShiftModal" class="btn btn-outline-info btn-sm fw-bold shadow-sm" onclick="openCloseShiftModal()">
+            <i class="bi bi-safe ms-1"></i> تصفية الدرج نهاية اليوم
+        </button>
+    </div>
+</div>
+
+<div class="pos-container">
+    <!-- LEFT PANEL: Shopping Cart & Checkout -->
+    <div class="pos-cart-panel">
+        <!-- Cart Header -->
+        <div class="p-3 border-bottom d-flex justify-content-between align-items-center bg-light rounded-top">
+            <div>
+                <h5 class="fw-bold mb-0 text-primary"><i class="bi bi-cart3 ms-1"></i> سلة الفاتورة</h5>
+                <small class="text-muted" id="cartItemCountText">0 أصناف</small>
+            </div>
+            <button type="button" class="btn btn-outline-danger btn-sm py-1 px-2" onclick="clearCart()" title="تفريغ السلة">
+                <i class="bi bi-trash ms-1"></i> تفريغ
+            </button>
+        </div>
+
+        <!-- Customer Selector -->
+        <div class="p-3 border-bottom bg-white">
+            <div class="d-flex gap-2">
+                <div class="position-relative flex-grow-1">
+                    <input type="text" id="posCustomerInput" class="form-control form-control-sm" placeholder="العميل: اكتب الاسم أو الهاتف (على الطاير)" autocomplete="off" />
+                    <input type="hidden" id="posCustomerId" value="" />
+                    <input type="hidden" id="posCustomerPhone" value="" />
+                    <div id="customerSuggestions" class="position-absolute start-0 end-0 bg-white shadow-lg border rounded-3 mt-1 d-none" style="z-index: 1060; max-height: 250px; overflow-y: auto; display: none;"></div>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1" onclick="openQuickCustomerModal()" title="إضافة عميل جديد على الطاير">
+                    <i class="bi bi-person-plus-fill"></i>
+                    <span class="d-none d-sm-inline small">عميل جديد</span>
+                </button>
+            </div>
+            <div id="selectedCustomerBadge" class="mt-2 d-none">
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle p-2 px-3 d-flex align-items-center justify-content-between">
+                    <span>
+                        <i class="bi bi-person-check-fill ms-1"></i>
+                        <span id="selectedCustomerName"></span>
+                    </span>
+                    <i class="bi bi-x-circle-fill text-danger ms-2" style="cursor: pointer;" onclick="clearSelectedCustomer()" title="إلغاء اختيار العميل"></i>
+                </span>
+            </div>
+        </div>
+
+        <!-- Cart Items List (Scrollable) -->
+        <div class="pos-cart-items" id="cartItemsContainer">
+            <div class="text-center py-5 text-muted" id="emptyCartMessage">
+                <i class="bi bi-cart-x fs-1 opacity-50 d-block mb-2"></i>
+                <span class="fw-bold">السلة فارغة</span>
+                <p class="small text-muted mb-0">امسح الباركود أو اختر الأجهزة من القائمة</p>
+            </div>
+        </div>
+
+        <!-- Cart Financial Totals & Checkout -->
+        <div class="p-3 border-top bg-light rounded-bottom">
+            <div class="d-flex justify-content-between mb-1 small">
+                <span class="text-muted">المجموع الفرعي:</span>
+                <strong id="cartSubTotal">0.00 ج.م</strong>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-1 small">
+                <span class="text-muted">خصم إضافي:</span>
+                <div class="d-flex align-items-center" style="width: 110px;">
+                    <input type="number" id="cartDiscountInput" class="form-control form-control-sm text-center" value="0" min="0" oninput="calculateTotals()" />
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-2 pt-2 border-top">
+                <span class="fw-bold fs-5 text-dark">الإجمالي النهائي:</span>
+                <span class="fw-bold fs-4 text-primary" id="cartNetTotal">0.00 ج.م</span>
+            </div>
+
+            <div class="row g-2 mb-2">
+                <div class="col-6">
+                    <label class="form-label small text-muted mb-1">طريقة الدفع</label>
+                    <select id="cartPaymentMethod" class="form-select form-select-sm fw-bold" onchange="onPaymentMethodChange()">
+                        <option value="1">نقدي (Cash)</option>
+                        <option value="5">⚡ انستاباي (InstaPay)</option>
+                        <option value="2">💳 بطاقة / فيزا</option>
+                        <option value="3">🏦 تحويل محفظة / بنك</option>
+                    </select>
+                </div>
+                <div class="col-6">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="form-label small text-muted mb-0">المبلغ المدفوع</label>
+                        <div class="d-flex gap-1">
+                            <button type="button" class="btn btn-link p-0 text-primary text-decoration-none" style="font-size: 0.72rem;" onclick="setFullPayment()">كاش كامل</button>
+                            <span class="text-muted" style="font-size: 0.72rem;">|</span>
+                            <button type="button" class="btn btn-link p-0 text-danger text-decoration-none" style="font-size: 0.72rem;" onclick="setCreditPayment()">آجل</button>
+                        </div>
+                    </div>
+                    <input type="number" id="cartPaidInput" class="form-control form-control-sm text-center fw-bold text-primary" value="0" min="0" step="any" oninput="calculateRemaining()" />
+                </div>
+            </div>
+
+            <!-- Reference / Account Number for InstaPay or Electronic Transfer -->
+            <div id="paymentRefGroup" class="mb-2 p-2 bg-light rounded-3 border d-none">
+                <label class="form-label small text-dark fw-bold mb-1" id="paymentRefLabel">
+                    <i class="bi bi-lightning-charge-fill text-warning ms-1"></i>رقم تحويل انستاباي / الحساب المستلم عليه:
+                </label>
+                <input type="text" id="cartPaymentRefNumber" class="form-control form-control-sm text-center font-monospace fw-bold" placeholder="أدخل رقم الهاتف أو الحساب أو رقم عملية التحويل" />
+            </div>
+
+            <div class="d-flex justify-content-between small text-muted mb-2">
+                <span>المتبقي (آجل على العميل):</span>
+                <strong id="cartRemainingText" class="text-success">0.00 ج.م</strong>
+            </div>
+
+            <div id="creditAlertBadge" class="alert alert-warning py-1 px-2 small mb-3 d-none">
+                <i class="bi bi-exclamation-triangle-fill ms-1"></i> فاتورة آجلة: سيتم تسجيل <strong id="creditAlertAmount">0</strong> ج.م كمديونية على حساب العميل.
+            </div>
+
+            <!-- Checkout Button -->
+            <button type="button" id="btnCheckout" class="btn btn-primary w-100 py-2 fw-bold shadow d-flex align-items-center justify-content-center gap-2" onclick="submitCheckout()">
+                <i class="bi bi-printer-fill fs-5"></i>
+                <span>إتمام البيع وطباعة الفاتورة</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Mobile Floating Cart Bar (< 992px) -->
+    <div class="d-lg-none position-fixed bottom-0 start-0 end-0 bg-white border-top shadow-lg p-2 px-3 d-flex justify-content-between align-items-center" style="z-index: 1020;">
+        <div>
+            <span class="text-muted small">الإجمالي:</span>
+            <strong class="text-primary fs-5" id="mobileCartTotal">0.00 ج.م</strong>
+            <span class="badge bg-secondary ms-1" id="mobileCartCount">0</span>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm d-flex align-items-center gap-1 shadow-sm" onclick="document.querySelector('.pos-cart-panel').scrollIntoView({behavior: 'smooth'})">
+            <i class="bi bi-cart3"></i> عرض السلة والدفع
+        </button>
+    </div>
+
+    <!-- RIGHT PANEL: Product Search & Catalogue -->
+    <div class="pos-products-panel">
+        <!-- Search & Scanner Bar -->
+        <div class="card p-3 mb-3 shadow-sm">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-7">
+                    <div class="position-relative">
+                        <i class="bi bi-search search-icon position-absolute top-50 translate-middle-y" style="right: 1rem; color: #94a3b8;"></i>
+                        <input type="text" id="posProductSearchInput" class="form-control form-control-lg pe-5" placeholder="ابحث باسم الجهاز أو الماركة أو الباركود أو IMEI..." autocomplete="off" autofocus />
+                        <div id="posSearchResultsDropdown" class="position-absolute start-0 end-0 bg-white shadow-lg border rounded-3 mt-1 d-none" style="z-index: 1060; max-height: 350px; overflow-y: auto;"></div>
+                    </div>
+                </div>
+                <div class="col-md-5 d-flex gap-2">
+                    <button type="button" class="btn btn-success btn-lg flex-grow-1 d-flex align-items-center justify-content-center gap-2 shadow-sm" onclick="openCameraScanner(handlePosBarcode)">
+                        <i class="bi bi-camera-fill fs-5"></i>
+                        <span class="fw-bold">مسح بالكاميرا</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Devices Grid -->
+        <div class="card shadow-sm flex-grow-1 overflow-hidden d-flex flex-column">
+            <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <span class="fw-bold small text-muted"><i class="bi bi-phone-fill ms-1 text-primary"></i>الأجهزة والموبايلات</span>
+                <!-- Brand Filter Buttons -->
+                <div class="d-flex gap-1 overflow-auto" id="posBrandFilters">
+                    <button type="button" class="btn btn-sm btn-primary active border brand-filter-btn" onclick="filterQuickProducts('all', this)">الكل</button>
+                    @foreach (var b in brands)
+                    {
+                        <button type="button" class="btn btn-sm btn-light border brand-filter-btn" onclick="filterQuickProducts('@b.Name', this)">@b.Name</button>
+                    }
+                </div>
+            </div>
+
+            <div class="card-body p-3 overflow-y-auto">
+                <div class="row g-3" id="quickProductsGrid">
+                    @foreach (var p in quickProducts)
+                    {
+                        <div class="col-6 col-md-4 col-xl-3 product-card-col" data-brand="@p.Brand?.Name">
+                            <div class="product-grid-card shadow-sm" onclick="addProductToCart(@p.Id, '@Html.Raw(p.Name.Replace("'", "\\'"))', @p.SellingPrice, '@p.Barcode', @p.StockQuantity, '@p.SerialNumberOrImei', '@Html.Raw($"{p.Color} {p.Storage} {p.Ram}".Trim().Replace("'", "\\'"))')">
+                                <div>
+                                    <div class="product-img">
+                                        <i class="bi bi-phone"></i>
+                                    </div>
+                                    <div class="fw-bold small text-dark mb-1 text-truncate" title="@p.Name">@p.Name</div>
+                                    @if (!string.IsNullOrEmpty(p.Storage) || !string.IsNullOrEmpty(p.Ram))
+                                    {
+                                        <div class="text-muted small mb-1" style="font-size: 0.72rem;">@p.Storage &bull; @p.Ram</div>
+                                    }
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="badge bg-light text-muted border" style="font-size: 0.7rem;">@p.Barcode</span>
+                                        <span class="badge @(p.StockQuantity <= p.MinStockLevel ? "bg-danger" : "bg-success")" style="font-size: 0.7rem;">
+                                            @p.StockQuantity متاح
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="text-primary fw-bold fs-6 mt-2 pt-1 border-top">
+                                    @p.SellingPrice.ToString("N0") ج.م
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Customer Modal (Full Details) -->
+<div class="modal fade" id="quickCustomerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg border-0 rounded-4 overflow-hidden">
+            <div class="modal-header bg-primary text-white py-3 px-4">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="bg-white bg-opacity-25 rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                        <i class="bi bi-person-plus-fill fs-5"></i>
+                    </div>
+                    <div>
+                        <h6 class="modal-title fw-bold mb-0">تسجيل عميل جديد وحفظ بياناته</h6>
+                        <span class="text-white-50 small" style="font-size: 0.75rem;">سيتم حفظ العميل في قاعدة البيانات واختياره للفاتورة فوراً</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="quickCustError" class="alert alert-danger py-2 px-3 small d-none mb-3"></div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-dark">
+                        <i class="bi bi-person-fill text-primary ms-1"></i>اسم العميل بالكامل <span class="text-danger">*</span>
+                    </label>
+                    <input type="text" id="quickCustName" class="form-control" placeholder="اكتب اسم العميل (مثال: الحاج أحمد / شركة النور)" required autocomplete="off" />
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold text-dark">
+                            <i class="bi bi-telephone-fill text-success ms-1"></i>رقم الهاتف الأساسي
+                        </label>
+                        <input type="tel" id="quickCustPhone" class="form-control font-monospace text-start" placeholder="010xxxxxxxx" autocomplete="off" oninput="syncWhatsAppPhone()" />
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label small fw-bold text-dark mb-0">
+                                <i class="bi bi-whatsapp text-success ms-1"></i>رقم الواتساب
+                            </label>
+                            <div class="form-check form-check-inline m-0">
+                                <input class="form-check-input" type="checkbox" id="quickCustSameWhatsApp" checked onchange="toggleSameWhatsApp()" />
+                                <label class="form-check-label small text-muted" for="quickCustSameWhatsApp" style="font-size: 0.72rem;">نفس الهاتف</label>
+                            </div>
+                        </div>
+                        <input type="tel" id="quickCustWhatsApp" class="form-control font-monospace text-start" placeholder="010xxxxxxxx" autocomplete="off" />
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-dark">
+                        <i class="bi bi-geo-alt-fill text-danger ms-1"></i>العنوان / المنطقة / اسم المحل
+                    </label>
+                    <input type="text" id="quickCustAddress" class="form-control form-control-sm" placeholder="مثال: العدوة - شارع البحر / المنيا" autocomplete="off" />
+                </div>
+
+                <div class="row g-2 mb-2">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold text-dark">
+                            <i class="bi bi-tag-fill text-info ms-1"></i>نوع العميل
+                        </label>
+                        <select id="quickCustType" class="form-select form-select-sm">
+                            <option value="عميل عادي (قطاعي)">عميل عادي (قطاعي)</option>
+                            <option value="عميل جملة وموزع">عميل جملة وموزع</option>
+                            <option value="عميل دائم بحساب آجل">عميل دائم (حساب آجل)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold text-dark">
+                            <i class="bi bi-chat-left-text-fill text-secondary ms-1"></i>ملاحظات إضافية
+                        </label>
+                        <input type="text" id="quickCustNotes" class="form-control form-control-sm" placeholder="أي ملاحظات خاصة بالعميل..." autocomplete="off" />
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light py-2 px-4 justify-content-between">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">إلغاء</button>
+                <button type="button" id="btnSaveQuickCustomer" class="btn btn-primary btn-sm px-4 fw-bold shadow-sm d-flex align-items-center gap-1" onclick="saveQuickCustomer()">
+                    <i class="bi bi-check-circle-fill"></i>
+                    <span>حفظ العميل واختياره في الفاتورة</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Start Daily Shift / Open Cash Drawer (بداية اليوم) -->
+<div class="modal fade" id="openShiftModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg border-0 rounded-4 overflow-hidden">
+            <div class="modal-header bg-dark text-white py-3 px-4">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="bg-warning text-dark rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                        <i class="bi bi-cash-coin fs-5"></i>
+                    </div>
+                    <div>
+                        <h6 class="modal-title fw-bold mb-0">بدء وردية جديدة (فتح الدرج)</h6>
+                        <span class="text-white-50 small" style="font-size: 0.75rem;">إدخال الرصيد الافتتاحي في درج النقدية لبداية اليوم</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="openShiftError" class="alert alert-danger py-2 px-3 small d-none mb-3"></div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-dark">
+                        <i class="bi bi-cash-stack text-success ms-1"></i>رصيد بداية اليوم (فكة الدرج) <span class="text-danger">*</span>
+                    </label>
+                    <div class="input-group input-group-lg">
+                        <input type="number" id="openShiftStartingCash" class="form-control text-center fw-bold text-primary font-monospace" placeholder="0.00" min="0" step="any" autofocus />
+                        <span class="input-group-text fw-bold">ج.م</span>
+                    </div>
+                    <small class="text-muted d-block mt-1">المبلغ الموجود بالدرج قبل بدء أول عملية بيع اليوم</small>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small fw-bold text-dark">ملاحظات البداية</label>
+                    <input type="text" id="openShiftNotes" class="form-control" placeholder="أي ملاحظات تخص الوردية..." />
+                </div>
+            </div>
+            <div class="modal-footer bg-light py-2 px-4 justify-content-between">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">إلغاء</button>
+                <button type="button" id="btnSubmitOpenShift" class="btn btn-warning btn-sm px-4 fw-bold shadow-sm" onclick="submitOpenShift()">
+                    <i class="bi bi-check-circle-fill ms-1"></i> فتح الوردية وبدء العمل
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: End of Day Reconciliation / Close Cash Drawer (تصفية الدرج ونهاية اليوم) -->
+<div class="modal fade" id="closeShiftModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content shadow-lg border-0 rounded-4 overflow-hidden">
+            <div class="modal-header bg-dark text-white py-3 px-4">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="bg-info text-dark rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                        <i class="bi bi-safe2-fill fs-5"></i>
+                    </div>
+                    <div>
+                        <h6 class="modal-title fw-bold mb-0">تصفية الدرج وتقفيل اليوم (End of Day)</h6>
+                        <span class="text-white-50 small" style="font-size: 0.75rem;">جرد النقدية الفعلية وحساب العجز أو الزيادة وصافي حركة اليوم</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- Shift Stats Overview Cards -->
+                <div class="row g-2 mb-3 text-center">
+                    <div class="col-6 col-md">
+                        <div class="p-2 border rounded-3 bg-light">
+                            <small class="text-muted d-block" style="font-size: 0.72rem;">رصيد البداية</small>
+                            <strong class="text-dark fs-6" id="closeModalStartingCash">0.00 ج.م</strong>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md">
+                        <div class="p-2 border rounded-3 bg-light">
+                            <small class="text-muted d-block" style="font-size: 0.72rem;">مبيعات الكاش</small>
+                            <strong class="text-success fs-6" id="closeModalCashSales">0.00 ج.م</strong>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md">
+                        <div class="p-2 border rounded-3 bg-warning-subtle border-warning-subtle">
+                            <small class="text-warning-emphasis d-block fw-bold" style="font-size: 0.72rem;"><i class="bi bi-lightning-charge-fill text-warning ms-1"></i>انستاباي</small>
+                            <strong class="text-warning-emphasis fs-6" id="closeModalInstaPaySales">0.00 ج.م</strong>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md">
+                        <div class="p-2 border rounded-3 bg-info-subtle border-info-subtle">
+                            <small class="text-info-emphasis d-block fw-bold" style="font-size: 0.72rem;"><i class="bi bi-credit-card-2-front text-info ms-1"></i>فيزا</small>
+                            <strong class="text-info-emphasis fs-6" id="closeModalVisaSales">0.00 ج.م</strong>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md">
+                        <div class="p-2 border rounded-3 bg-primary-subtle border-primary-subtle">
+                            <small class="text-primary d-block fw-bold" style="font-size: 0.72rem;">المتوقع بالدرج كاش</small>
+                            <strong class="text-primary fs-5" id="closeModalExpectedCash">0.00 ج.م</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actual Counted Cash Input -->
+                <div class="p-3 bg-light rounded-3 border mb-3">
+                    <label class="form-label small fw-bold text-dark">
+                        <i class="bi bi-calculator-fill text-primary ms-1"></i>النقدية الفعلية التي تم عدها في الدرج <span class="text-danger">*</span>
+                    </label>
+                    <div class="input-group input-group-lg mb-2">
+                        <input type="number" id="closeShiftActualCash" class="form-control text-center fw-bold text-primary font-monospace fs-3" placeholder="0.00" min="0" step="any" oninput="calculateShiftDifference()" />
+                        <span class="input-group-text fw-bold">ج.م</span>
+                    </div>
+
+                    <!-- Live Difference Indicator Badge -->
+                    <div id="shiftDiffAlert" class="alert alert-secondary py-2 px-3 text-center mb-0 fw-bold fs-6">
+                        يرجى إدخال المبلغ الفعلي الموجود في الدرج لحساب النتيجة
+                    </div>
+                </div>
+
+                <div class="mb-2">
+                    <label class="form-label small fw-bold text-dark">ملاحظات التقفيل</label>
+                    <input type="text" id="closeShiftNotes" class="form-control form-control-sm" placeholder="أي ملاحظات حول تصفية الدرج أو الفروق..." />
+                </div>
+            </div>
+            <div class="modal-footer bg-light py-2 px-4 justify-content-between">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">إلغاء</button>
+                <button type="button" id="btnSubmitCloseShift" class="btn btn-primary btn-sm px-4 fw-bold shadow-sm" onclick="submitCloseShift()">
+                    <i class="bi bi-lock-fill ms-1"></i> اعتماد التقفيل وإنهاء اليوم
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Mobile Floating Bottom Cart Bar -->
+<div id="posMobileCartBar" class="d-lg-none position-fixed bottom-0 start-0 end-0 bg-white border-top shadow-lg p-2 px-3 d-flex align-items-center justify-content-between" style="z-index: 1040;">
+    <div class="d-flex align-items-center gap-2">
+        <span class="badge bg-primary rounded-pill fs-6" id="mobileCartCount">0</span>
+        <div>
+            <div class="small fw-bold text-dark">سلة المبيعات</div>
+            <div class="text-success fw-bold small" id="mobileCartTotal">0.00 ج.م</div>
+        </div>
+    </div>
+    <button type="button" class="btn btn-success btn-sm px-3 fw-bold rounded-pill d-flex align-items-center gap-1 shadow-sm" onclick="scrollToCartPanel()">
+        <i class="bi bi-cart-check-fill"></i>
+        <span>إتمام الفاتورة</span>
+    </button>
+</div>
+
+@section Scripts {
+<script>
+    // Cart State
+    let cart = [];
+
+    function scrollToCartPanel() {
+        document.querySelector('.pos-cart-panel')?.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Hardware Scanner & POS Barcode callback
+    window.handlePosBarcode = function(barcode) {
+        if (!barcode) return;
+        fetch(`/api/products/by-barcode/${encodeURIComponent(barcode)}`)
+            .then(res => {
+                if (!res.ok) throw new Error('المنتج غير موجود');
+                return res.json();
+            })
+            .then(p => {
+                playBeep();
+                const specs = [p.brandName, p.storage, p.ram, p.color].filter(Boolean).join(' • ');
+                addProductToCart(p.id, p.name, p.sellingPrice, p.barcode, p.stockQuantity, p.serialNumberOrImei, specs);
+                showToast(`تمت إضافة: ${p.name}`, 'success');
+                document.getElementById('posProductSearchInput').value = '';
+            })
+            .catch(err => {
+                showToast(`الباركود غير مسجل (${barcode})`, 'warning');
+            });
+    };
+
+    // Register scanner callback
+    window.DoctorApp.onBarcodeScannedCallback = window.handlePosBarcode;
+
+    // Enhanced Live Product Search & Instant Autocomplete
+    const searchInput = document.getElementById('posProductSearchInput');
+    const searchDropdown = document.getElementById('posSearchResultsDropdown');
+    let searchDebounceTimer = null;
+    let currentSearchResults = [];
+
+    if (searchInput) {
+        // 1. Live input listener (filters grid on screen and fetches API suggestions)
+        searchInput.addEventListener('input', function () {
+            const query = this.value.trim().toLowerCase();
+            
+            // Live filter quick products grid on screen immediately
+            filterQuickProductsByQuery(query);
+
+            if (!query) {
+                hideSearchDropdown();
+                return;
+            }
+
+            // Fetch live search results from API
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(() => {
+                fetch(`/api/products/search?query=${encodeURIComponent(query)}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        currentSearchResults = data || [];
+                        renderSearchDropdown(currentSearchResults, query);
+                    })
+                    .catch(err => console.error('Error fetching search results:', err));
+            }, 120);
+        });
+
+        // 2. Enter key listener
+        searchInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const query = this.value.trim();
+                if (!query) return;
+
+                // Try exact barcode lookup first
+                fetch(`/api/products/by-barcode/${encodeURIComponent(query)}`)
+                    .then(res => {
+                        if (!res.ok) throw new Error('Not exact barcode');
+                        return res.json();
+                    })
+                    .then(p => {
+                        playBeep();
+                        const specs = [p.brandName, p.storage, p.ram, p.color].filter(Boolean).join(' • ');
+                        addProductToCart(p.id, p.name, p.sellingPrice, p.barcode, p.stockQuantity, p.serialNumberOrImei, specs);
+                        showToast(`تمت إضافة: ${p.name}`, 'success');
+                        searchInput.value = '';
+                        hideSearchDropdown();
+                        filterQuickProductsByQuery('');
+                    })
+                    .catch(() => {
+                        // If not barcode, take top matching search result
+                        if (currentSearchResults && currentSearchResults.length > 0) {
+                            const p = currentSearchResults[0];
+                            if (p.stockQuantity <= 0) {
+                                showToast('هذا الجهاز غير متوفر بالمخزن حالياً!', 'danger');
+                                return;
+                            }
+                            playBeep();
+                            const specs = [p.brandName, p.storage, p.ram, p.color].filter(Boolean).join(' • ');
+                            addProductToCart(p.id, p.name, p.sellingPrice, p.barcode, p.stockQuantity, p.serialNumberOrImei, specs);
+                            showToast(`تمت إضافة: ${p.name}`, 'success');
+                            searchInput.value = '';
+                            hideSearchDropdown();
+                            filterQuickProductsByQuery('');
+                        } else {
+                            showToast(`لم يتم العثور على أجهزة تطابق (${query})`, 'warning');
+                        }
+                    });
+            } else if (e.key === 'Escape') {
+                hideSearchDropdown();
+            }
+        });
+
+        // Hide dropdown when clicking outside
+        document.addEventListener('click', function (e) {
+            if (!searchInput.contains(e.target) && searchDropdown && !searchDropdown.contains(e.target)) {
+                hideSearchDropdown();
+            }
+        });
+    }
+
+    function filterQuickProductsByQuery(query) {
+        const cols = document.querySelectorAll('#quickProductsGrid .product-card-col');
+        cols.forEach(col => {
+            if (!query) {
+                col.style.display = '';
+            } else {
+                const text = (col.innerText || '').toLowerCase();
+                if (text.includes(query)) {
+                    col.style.display = '';
+                } else {
+                    col.style.display = 'none';
+                }
+            }
+        });
+    }
+
+    function renderSearchDropdown(items, query) {
+        if (!searchDropdown) return;
+
+        if (!items || items.length === 0) {
+            searchDropdown.innerHTML = `
+                <div class="p-3 text-center text-muted small">
+                    <i class="bi bi-search d-block fs-5 mb-1 opacity-50"></i>
+                    لا توجد أجهزة مطابقة لـ "<strong>${escapeHtml(query)}</strong>"
+                </div>`;
+            searchDropdown.classList.remove('d-none');
+            return;
+        }
+
+        let html = '<div class="list-group list-group-flush">';
+        items.forEach(p => {
+            const specs = [p.brandName, p.storage, p.ram].filter(Boolean).join(' • ');
+            const isOutOfStock = p.stockQuantity <= 0;
+            
+            html += `
+                <button type="button" class="list-group-item list-group-item-action p-2 px-3 d-flex justify-content-between align-items-center ${isOutOfStock ? 'opacity-50' : ''}" 
+                        onclick="selectSearchResultProduct(${p.id}, '${escapeHtml(p.name)}', ${p.sellingPrice}, '${p.barcode || ''}', ${p.stockQuantity}, '${p.serialNumberOrImei || ''}', '${escapeHtml(specs)}')">
+                    <div>
+                        <div class="fw-bold text-dark mb-0">${escapeHtml(p.name)}</div>
+                        <div class="small text-muted" style="font-size: 0.78rem;">
+                            ${specs ? `<span class="badge bg-light text-secondary border me-1">${escapeHtml(specs)}</span>` : ''}
+                            ${p.barcode ? `<span class="me-2">باركود: ${escapeHtml(p.barcode)}</span>` : ''}
+                            ${p.serialNumberOrImei ? `<span>IMEI: ${escapeHtml(p.serialNumberOrImei)}</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <div class="fw-bold text-primary">${p.sellingPrice.toLocaleString()} ج.م</div>
+                        <span class="badge ${isOutOfStock ? 'bg-danger' : 'bg-success-subtle text-success border border-success-subtle'}" style="font-size: 0.7rem;">
+                            ${isOutOfStock ? 'نفد المخزون' : `${p.stockQuantity} متاح`}
+                        </span>
+                    </div>
+                </button>`;
+        });
+        html += '</div>';
+
+        searchDropdown.innerHTML = html;
+        searchDropdown.classList.remove('d-none');
+    }
+
+    function selectSearchResultProduct(id, name, price, barcode, stock, imei, details) {
+        if (stock <= 0) {
+            showToast('هذا الجهاز غير متوفر بالمخزن حالياً!', 'danger');
+            return;
+        }
+        playBeep();
+        addProductToCart(id, name, price, barcode, stock, imei, details);
+        showToast(`تمت إضافة: ${name}`, 'success');
+        if (searchInput) searchInput.value = '';
+        hideSearchDropdown();
+        filterQuickProductsByQuery('');
+    }
+
+    function hideSearchDropdown() {
+        if (searchDropdown) {
+            searchDropdown.classList.add('d-none');
+            searchDropdown.innerHTML = '';
+        }
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    // Add to Cart Logic
+    function addProductToCart(id, name, price, barcode, stock, imei, details) {
+        const existing = cart.find(item => item.productId === id);
+        if (existing) {
+            if (existing.quantity >= stock) {
+                showToast(`عفواً، الكمية المتاحة بالمخزن (${stock}) فقط`, 'warning');
+                return;
+            }
+            existing.quantity++;
+            if (details && !existing.details) {
+                existing.details = details;
+            }
+        } else {
+            if (stock <= 0) {
+                showToast('هذا المنتج غير متوفر بالمخزن حالياً!', 'danger');
+                return;
+            }
+            cart.push({
+                productId: id,
+                name: name,
+                unitPrice: price,
+                barcode: barcode,
+                stock: stock,
+                quantity: 1,
+                discount: 0,
+                imeiOrSerial: imei,
+                details: details || ''
+            });
+        }
+        renderCart();
+    }
+
+    function updateItemDetails(productId, val) {
+        const item = cart.find(i => i.productId === productId);
+        if (item) {
+            item.details = val;
+        }
+    }
+
+    function updateItemQty(productId, delta) {
+        const item = cart.find(i => i.productId === productId);
+        if (!item) return;
+
+        const newQty = item.quantity + delta;
+        if (newQty <= 0) {
+            removeItemFromCart(productId);
+            return;
+        }
+
+        if (newQty > item.stock) {
+            showToast(`الكمية المتاحة بالمخزن (${item.stock}) فقط`, 'warning');
+            return;
+        }
+
+        item.quantity = newQty;
+        renderCart();
+    }
+
+    function removeItemFromCart(productId) {
+        cart = cart.filter(i => i.productId !== productId);
+        renderCart();
+    }
+
+    function clearCart() {
+        if (cart.length === 0) return;
+        if (confirm('هل أنت متأكد من تفريغ سلة المبيعات؟')) {
+            cart = [];
+            renderCart();
+        }
+    }
+
+    function renderCart() {
+        const container = document.getElementById('cartItemsContainer');
+        const countText = document.getElementById('cartItemCountText');
+
+        if (cart.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-5 text-muted" id="emptyCartMessage">
+                    <i class="bi bi-cart-x fs-1 opacity-50 d-block mb-2"></i>
+                    <span class="fw-bold">السلة فارغة</span>
+                    <p class="small text-muted mb-0">امسح الباركود أو اختر المنتجات من القائمة</p>
+                </div>
+            `;
+            countText.innerText = '0 أصناف';
+            calculateTotals();
+            return;
+        }
+
+        let totalItems = 0;
+        let html = '';
+
+        cart.forEach(item => {
+            totalItems += item.quantity;
+            const itemTotal = (item.unitPrice * item.quantity) - item.discount;
+
+            html += `
+                <div class="pos-cart-item border-bottom pb-2 mb-2">
+                    <div class="d-flex justify-content-between align-items-start mb-1">
+                        <div class="fw-bold text-dark small" style="max-width: 260px;">${escapeHtml(item.name)}</div>
+                        <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="removeItemFromCart(${item.productId})" title="حذف من الفاتورة">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                    ${item.imeiOrSerial ? `<div class="text-muted mb-1" style="font-size: 0.72rem;"><i class="bi bi-upc ms-1"></i>IMEI/S.N: ${escapeHtml(item.imeiOrSerial)}</div>` : ''}
+                    
+                    <!-- تفاصيل الصنف في الفاتورة -->
+                    <div class="mb-2">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-light border-0 text-muted p-1" style="font-size: 0.7rem;"><i class="bi bi-card-text"></i></span>
+                            <input type="text" class="form-control form-control-sm border-0 bg-light py-0 px-2" style="font-size: 0.75rem;" placeholder="تفاصيل الصنف بالفاتورة (سيريال، لون، ضمان...)" value="${escapeHtml(item.details || '')}" oninput="updateItemDetails(${item.productId}, this.value)" title="تفاصيل ومواصفات تظهر في الفاتورة المطبوعة" />
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mt-1 flex-wrap gap-2">
+                        <div class="input-group input-group-sm" style="width: 95px;">
+                            <button class="btn btn-outline-secondary px-2" type="button" onclick="updateItemQty(${item.productId}, -1)">-</button>
+                            <input type="text" class="form-control text-center p-0 fw-bold" value="${item.quantity}" readonly />
+                            <button class="btn btn-outline-secondary px-2" type="button" onclick="updateItemQty(${item.productId}, 1)">+</button>
+                        </div>
+                        <div class="d-flex align-items-center gap-1">
+                            <span class="text-muted small" style="font-size: 0.72rem;">سعر الفاتورة:</span>
+                            <div class="input-group input-group-sm" style="width: 105px;">
+                                <input type="number" step="any" min="0" class="form-control form-control-sm text-center fw-bold text-primary p-1" value="${item.unitPrice}" oninput="updateItemPrice(${item.productId}, this.value)" title="تعديل سعر البيع في الفاتورة" />
+                                <span class="input-group-text p-1 small" style="font-size: 0.7rem;">ج.م</span>
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <strong class="text-primary fs-6" id="cart-item-total-${item.productId}">${itemTotal.toLocaleString()} ج.م</strong>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+        countText.innerText = `${totalItems} قطع (${cart.length} أصناف)`;
+        calculateTotals();
+    }
+
+    function updateItemPrice(productId, newPriceVal) {
+        const item = cart.find(i => i.productId === productId);
+        if (!item) return;
+        const p = parseFloat(newPriceVal);
+        if (!isNaN(p) && p >= 0) {
+            item.unitPrice = p;
+            const itemTotal = (item.unitPrice * item.quantity) - item.discount;
+            const el = document.getElementById(`cart-item-total-${item.productId}`);
+            if (el) el.innerText = `${itemTotal.toLocaleString()} ج.م`;
+            calculateTotals();
+        }
+    }
+
+    function calculateTotals() {
+        const subTotal = cart.reduce((sum, i) => sum + (i.unitPrice * i.quantity) - i.discount, 0);
+        const overallDiscount = parseFloat(document.getElementById('cartDiscountInput').value) || 0;
+        const netTotal = Math.max(0, subTotal - overallDiscount);
+
+        document.getElementById('cartSubTotal').innerText = subTotal.toLocaleString('en-US', { minimumFractionDigits: 2 }) + ' ج.م';
+        document.getElementById('cartNetTotal').innerText = netTotal.toLocaleString('en-US', { minimumFractionDigits: 2 }) + ' ج.م';
+
+        // Sync Mobile Cart Bar
+        const mobileTotal = document.getElementById('mobileCartTotal');
+        const mobileCount = document.getElementById('mobileCartCount');
+        if (mobileTotal) mobileTotal.innerText = netTotal.toLocaleString('en-US', { minimumFractionDigits: 2 }) + ' ج.م';
+        if (mobileCount) mobileCount.innerText = cart.reduce((sum, i) => sum + i.quantity, 0);
+
+        // Update default paid input to match net total
+        const paidInput = document.getElementById('cartPaidInput');
+        paidInput.value = netTotal;
+
+        calculateRemaining();
+    }
+
+    function calculateRemaining() {
+        const netText = document.getElementById('cartNetTotal').innerText.replace(/[^\d.]/g, '');
+        const netTotal = parseFloat(netText) || 0;
+        const paid = parseFloat(document.getElementById('cartPaidInput').value) || 0;
+        const remaining = Math.max(0, netTotal - paid);
+
+        const remEl = document.getElementById('cartRemainingText');
+        remEl.innerText = remaining.toLocaleString('en-US', { minimumFractionDigits: 2 }) + ' ج.م';
+        remEl.className = remaining > 0 ? 'text-danger fw-bold' : 'text-success fw-bold';
+    }
+
+    // Filter Quick Products
+    function filterQuickProducts(catName) {
+        document.querySelectorAll('#posCategoryFilters button').forEach(b => b.classList.remove('active'));
+        event.target.classList.add('active');
+
+        document.querySelectorAll('.product-card-col').forEach(col => {
+            if (catName === 'all' || col.getAttribute('data-category') === catName) {
+                col.classList.remove('d-none');
+            } else {
+                col.classList.add('d-none');
+            }
+        });
+    }
+
+    // Customer State
+    let selectedCustomerObj = { id: null, name: '', phone: '' };
+
+    function setFullPayment() {
+        const netText = document.getElementById('cartNetTotal').innerText.replace(/[^\d.]/g, '');
+        const netTotal = parseFloat(netText) || 0;
+        document.getElementById('cartPaidInput').value = netTotal;
+        calculateRemaining();
+    }
+
+    function setCreditPayment() {
+        document.getElementById('cartPaidInput').value = 0;
+        calculateRemaining();
+    }
+
+    function calculateRemaining() {
+        const netText = document.getElementById('cartNetTotal').innerText.replace(/[^\d.]/g, '');
+        const netTotal = parseFloat(netText) || 0;
+        const paid = parseFloat(document.getElementById('cartPaidInput').value) || 0;
+        const remaining = Math.max(0, netTotal - paid);
+
+        const remEl = document.getElementById('cartRemainingText');
+        remEl.innerText = remaining.toLocaleString('en-US', { minimumFractionDigits: 2 }) + ' ج.م';
+        remEl.className = remaining > 0 ? 'text-danger fw-bold fs-6' : 'text-success fw-bold';
+
+        const alertBadge = document.getElementById('creditAlertBadge');
+        const alertAmount = document.getElementById('creditAlertAmount');
+        if (remaining > 0) {
+            alertAmount.innerText = remaining.toLocaleString('en-US', { minimumFractionDigits: 2 });
+            alertBadge.classList.remove('d-none');
+        } else {
+            alertBadge.classList.add('d-none');
+        }
+    }
+
+    // Customer Auto-Search & Instant Suggestions
+    const custInput = document.getElementById('posCustomerInput');
+    const custDropdown = document.getElementById('customerSuggestions');
+    let custSearchTimeout = null;
+
+    function showCustDropdown(html) {
+        if (!custDropdown) return;
+        custDropdown.innerHTML = html;
+        custDropdown.classList.remove('d-none');
+        custDropdown.style.display = 'block';
+    }
+
+    function hideCustDropdown() {
+        if (!custDropdown) return;
+        custDropdown.classList.add('d-none');
+        custDropdown.style.display = 'none';
+    }
+
+    if (custInput) {
+        custInput.addEventListener('focus', function() {
+            loadCustomerSuggestions(custInput.value.trim());
+        });
+
+        custInput.addEventListener('input', function() {
+            clearTimeout(custSearchTimeout);
+            custSearchTimeout = setTimeout(() => {
+                loadCustomerSuggestions(custInput.value.trim());
+            }, 150);
+        });
+
+        custInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const q = custInput.value.trim();
+                if (q) {
+                    // Check if an exact match exists or open modal to complete details
+                    openQuickCustomerModal(q);
+                    hideCustDropdown();
+                }
+            }
+        });
+    }
+
+    document.addEventListener('click', function(e) {
+        if (custInput && custDropdown && !custInput.contains(e.target) && !custDropdown.contains(e.target)) {
+            hideCustDropdown();
+        }
+    });
+
+    function loadCustomerSuggestions(q) {
+        fetch(`/api/customers/search?query=${encodeURIComponent(q)}`)
+            .then(res => res.json())
+            .then(data => {
+                if (!custDropdown) return;
+                let html = '';
+
+                if (data && data.length > 0) {
+                    html += '<div class="p-2 bg-light border-bottom text-muted small fw-bold px-3 d-flex justify-content-between align-items-center">';
+                    html += '  <span><i class="bi bi-people-fill ms-1 text-primary"></i>العملاء المسجلين في النظام:</span>';
+                    html += `  <span class="badge bg-secondary font-monospace">${data.length} عميل</span>`;
+                    html += '</div>';
+
+                    data.forEach(c => {
+                        const debt = parseFloat(c.totalDebt) || 0;
+                        const debtBadge = debt > 0 
+                            ? `<span class="badge bg-danger text-white ms-auto font-monospace px-2 py-1"><i class="bi bi-exclamation-circle ms-1"></i>مدين: ${debt.toLocaleString('en-US', { minimumFractionDigits: 2 })} ج.م</span>` 
+                            : `<span class="badge bg-success-subtle text-success border border-success-subtle ms-auto px-2 py-1"><i class="bi bi-check2 ms-1"></i>الحساب خالص</span>`;
+
+                        const phoneDisplay = c.phoneNumber && c.phoneNumber !== 'بدون هاتف' ? c.phoneNumber : '<span class="text-muted opacity-75">بدون هاتف</span>';
+                        const addressDisplay = c.address ? `<span class="text-muted ms-2 small"><i class="bi bi-geo-alt"></i> ${escapeHtml(c.address)}</span>` : '';
+
+                        html += `
+                            <button type="button" class="dropdown-item py-2 px-3 border-bottom d-flex justify-content-between align-items-center text-start gap-2" onclick="selectCustomer(${c.id}, '${escapeHtml(c.name)}', '${c.phoneNumber || ''}', ${debt})">
+                                <div class="text-truncate">
+                                    <div class="fw-bold text-dark"><i class="bi bi-person-check-fill text-primary ms-1"></i>${escapeHtml(c.name)}</div>
+                                    <small class="text-muted"><i class="bi bi-telephone ms-1"></i>${phoneDisplay}</small>
+                                    ${addressDisplay}
+                                </div>
+                                <div class="text-end flex-shrink-0">${debtBadge}</div>
+                            </button>
+                        `;
+
+                        // If user typed exact name, link silently
+                        if (q && c.name && c.name.trim().toLowerCase() === q.toLowerCase()) {
+                            selectedCustomerObj = { id: c.id, name: c.name, phone: c.phoneNumber || '' };
+                            document.getElementById('posCustomerId').value = c.id;
+                            document.getElementById('posCustomerPhone').value = c.phoneNumber || '';
+                        }
+                    });
+
+                    // Add button at bottom to register as new with full details if desired
+                    if (q) {
+                        html += `
+                            <div class="p-2 bg-light border-top text-center">
+                                <button type="button" class="btn btn-sm btn-outline-primary w-100 fw-bold d-flex align-items-center justify-content-center gap-1" onclick="openQuickCustomerModal('${escapeHtml(q)}')">
+                                    <i class="bi bi-person-plus-fill"></i>
+                                    <span>عميل جديد: إكمال باقي بيانات "${escapeHtml(q)}" وحفظه بالنظام</span>
+                                </button>
+                            </div>
+                        `;
+                    }
+
+                    showCustDropdown(html);
+                } else if (q) {
+                    // Customer NOT found in database
+                    html += `
+                        <div class="p-3 text-center">
+                            <div class="text-warning fs-3 mb-1"><i class="bi bi-person-exclamation"></i></div>
+                            <div class="fw-bold text-dark mb-1">العميل "${escapeHtml(q)}" غير مسجل في النظام</div>
+                            <p class="text-muted small mb-3">يمكنك حفظه الآن في قاعدة البيانات وتسجيل رقم هاتفه وباقي بياناته فوراً</p>
+                            <button type="button" class="btn btn-sm btn-primary w-100 py-2 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2" onclick="openQuickCustomerModal('${escapeHtml(q)}')">
+                                <i class="bi bi-person-plus-fill fs-6"></i>
+                                <span>حفظ العميل وإكمال باقي بياناته</span>
+                            </button>
+                        </div>
+                    `;
+                    showCustDropdown(html);
+                } else {
+                    hideCustDropdown();
+                }
+            })
+            .catch(() => {
+                hideCustDropdown();
+            });
+    }
+
+    function selectCustomer(id, name, phone, debt = 0) {
+        selectedCustomerObj = { id: id > 0 ? id : null, name: name, phone: phone || '' };
+        document.getElementById('posCustomerId').value = id > 0 ? id : '';
+        document.getElementById('posCustomerPhone').value = phone || '';
+        document.getElementById('posCustomerInput').value = name;
+        hideCustDropdown();
+
+        const phoneLabel = phone && phone !== 'بدون هاتف' ? `(${phone})` : '';
+        const debtText = debt > 0 ? `<span class="badge bg-danger ms-2">عليه متبقي سابق: ${debt.toLocaleString('en-US', { minimumFractionDigits: 2 })} ج.م</span>` : '';
+        const ledgerBtn = id > 0 ? `<a href="/Customers/Details/${id}" target="_blank" class="badge bg-dark text-white text-decoration-none ms-2 py-1 px-2"><i class="bi bi-file-earmark-spreadsheet ms-1"></i>كشف الحساب</a>` : '';
+
+        document.getElementById('selectedCustomerName').innerHTML = `<strong>${escapeHtml(name)}</strong> <span class="text-muted small">${phoneLabel}</span> ${debtText} ${ledgerBtn}`;
+        document.getElementById('selectedCustomerBadge').classList.remove('d-none');
+    }
+
+    function clearSelectedCustomer() {
+        selectedCustomerObj = { id: null, name: '', phone: '' };
+        document.getElementById('posCustomerId').value = '';
+        document.getElementById('posCustomerPhone').value = '';
+        document.getElementById('posCustomerInput').value = '';
+        document.getElementById('selectedCustomerBadge').classList.add('d-none');
+    }
+
+    function syncWhatsAppPhone() {
+        const sameCheckbox = document.getElementById('quickCustSameWhatsApp');
+        if (sameCheckbox && sameCheckbox.checked) {
+            document.getElementById('quickCustWhatsApp').value = document.getElementById('quickCustPhone').value.trim();
+        }
+    }
+
+    function toggleSameWhatsApp() {
+        const sameCheckbox = document.getElementById('quickCustSameWhatsApp');
+        const waInput = document.getElementById('quickCustWhatsApp');
+        if (sameCheckbox && sameCheckbox.checked) {
+            waInput.value = document.getElementById('quickCustPhone').value.trim();
+            waInput.readOnly = true;
+        } else {
+            waInput.readOnly = false;
+            waInput.focus();
+        }
+    }
+
+    function openQuickCustomerModal(prefilledName = '') {
+        hideCustDropdown();
+        const modalEl = document.getElementById('quickCustomerModal');
+        if (!modalEl) return;
+
+        const nameInput = document.getElementById('quickCustName');
+        const phoneInput = document.getElementById('quickCustPhone');
+        const waInput = document.getElementById('quickCustWhatsApp');
+        const addressInput = document.getElementById('quickCustAddress');
+        const notesInput = document.getElementById('quickCustNotes');
+        const errorAlert = document.getElementById('quickCustError');
+        const sameCheckbox = document.getElementById('quickCustSameWhatsApp');
+
+        if (errorAlert) errorAlert.classList.add('d-none');
+
+        const nameToUse = prefilledName || (document.getElementById('posCustomerInput')?.value.trim() || '');
+        if (nameInput) nameInput.value = nameToUse;
+        if (phoneInput) phoneInput.value = '';
+        if (waInput) { waInput.value = ''; waInput.readOnly = true; }
+        if (addressInput) addressInput.value = '';
+        if (notesInput) notesInput.value = '';
+        if (sameCheckbox) sameCheckbox.checked = true;
+
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+
+        modalEl.addEventListener('shown.bs.modal', function () {
+            if (nameToUse) {
+                if (phoneInput) phoneInput.focus();
+            } else {
+                if (nameInput) nameInput.focus();
+            }
+        }, { once: true });
+    }
+
+    function saveQuickCustomer() {
+        const nameInput = document.getElementById('quickCustName');
+        const phoneInput = document.getElementById('quickCustPhone');
+        const waInput = document.getElementById('quickCustWhatsApp');
+        const addressInput = document.getElementById('quickCustAddress');
+        const typeSelect = document.getElementById('quickCustType');
+        const notesInput = document.getElementById('quickCustNotes');
+        const errorAlert = document.getElementById('quickCustError');
+        const btnSave = document.getElementById('btnSaveQuickCustomer');
+
+        const name = nameInput.value.trim();
+        const phone = phoneInput.value.trim();
+        const whatsapp = waInput.value.trim();
+        const address = addressInput.value.trim();
+        const type = typeSelect ? typeSelect.value : '';
+        const notes = notesInput.value.trim();
+
+        if (!name) {
+            if (errorAlert) {
+                errorAlert.textContent = 'يرجى كتابة اسم العميل';
+                errorAlert.classList.remove('d-none');
+            }
+            nameInput.focus();
+            return;
+        }
+
+        const combinedNotes = type ? `[${type}] ${notes}`.trim() : notes;
+
+        btnSave.disabled = true;
+        const originalBtnHtml = btnSave.innerHTML;
+        btnSave.innerHTML = '<span class="spinner-border spinner-border-sm ms-2"></span> جاري الحفظ...';
+
+        fetch('/api/customers/quick-create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name: name,
+                phoneNumber: phone,
+                whatsAppNumber: whatsapp,
+                address: address,
+                notes: combinedNotes
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            btnSave.disabled = false;
+            btnSave.innerHTML = originalBtnHtml;
+
+            if (!data.success) {
+                if (errorAlert) {
+                    errorAlert.textContent = data.message || 'حدث خطأ أثناء حفظ العميل';
+                    errorAlert.classList.remove('d-none');
+                }
+                return;
+            }
+
+            // Close modal
+            const modalInstance = bootstrap.Modal.getInstance(document.getElementById('quickCustomerModal'));
+            if (modalInstance) modalInstance.hide();
+
+            // Select customer into POS
+            const c = data.customer;
+            selectCustomer(c.id, c.name, c.phoneNumber, c.totalDebt || 0);
+
+            showToast(data.message || `تم حفظ واختيار العميل (${c.name}) بنجاح`, 'success');
+        })
+        .catch(err => {
+            btnSave.disabled = false;
+            btnSave.innerHTML = originalBtnHtml;
+            if (errorAlert) {
+                errorAlert.textContent = 'تعذر الاتصال بالخادم لحفظ بيانات العميل';
+                errorAlert.classList.remove('d-none');
+            }
+        });
+    }
+
+    // Submit Checkout
+    function submitCheckout() {
+        if (cart.length === 0) {
+            showToast('سلة المبيعات فارغة!', 'warning');
+            alert('سلة المشتريات فارغة! يرجى اختيار جهاز أو مسح باركود أولاً لإضافته للفاتورة.');
+            return;
+        }
+
+        const subTotal = cart.reduce((sum, i) => sum + (i.unitPrice * i.quantity) - i.discount, 0);
+        const overallDiscount = parseFloat(document.getElementById('cartDiscountInput').value) || 0;
+        const netTotal = Math.max(0, subTotal - overallDiscount);
+        const paid = parseFloat(document.getElementById('cartPaidInput').value) || 0;
+        const remaining = Math.max(0, netTotal - paid);
+
+        // Resolve customer info
+        let customerId = selectedCustomerObj.id;
+        let customerName = selectedCustomerObj.name;
+        let customerPhone = selectedCustomerObj.phone;
+
+        const typedInput = document.getElementById('posCustomerInput').value.trim();
+        if (!customerId && !customerName && typedInput) {
+            if (/^\d{8,15}$/.test(typedInput)) {
+                customerPhone = typedInput;
+                customerName = 'عميل ' + typedInput;
+            } else {
+                customerName = typedInput;
+            }
+        }
+
+        // Validate debt sale has a customer name
+        if (remaining > 0 && !customerId && !customerName) {
+            alert('تنبيه: لتسجيل فاتورة بيع آجل (بمبلغ متبقي)، يرجى كتابة اسم العميل لحفظ المديونية في حسابه!');
+            document.getElementById('posCustomerInput').focus();
+            return;
+        }
+
+        const btn = document.getElementById('btnCheckout');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm ms-2"></span> جاري حفظ الفاتورة وإصدار الإيصال...';
+
+        const paymentMethod = parseInt(document.getElementById('cartPaymentMethod').value) || 1;
+        const paymentRef = document.getElementById('cartPaymentRefNumber')?.value?.trim() || null;
+
+        const payload = {
+            customerId: customerId,
+            customerName: customerId ? null : customerName,
+            customerPhone: customerId ? null : (customerPhone || null),
+            items: cart.map(i => ({
+                productId: i.productId,
+                name: i.name,
+                barcode: i.barcode,
+                unitPrice: i.unitPrice,
+                quantity: i.quantity,
+                discount: i.discount,
+                imeiOrSerial: i.imeiOrSerial,
+                itemDetails: i.details
+            })),
+            subTotal: subTotal,
+            discountAmount: overallDiscount,
+            taxAmount: 0,
+            totalAmount: netTotal,
+            paidAmount: paid,
+            remainingAmount: remaining,
+            paymentMethod: paymentMethod,
+            paymentReferenceNumber: paymentRef,
+            notes: remaining > 0 ? `فاتورة بيع آجل (متبقي دين: ${remaining.toFixed(2)} ج.م)` : (paymentMethod === 5 ? 'فاتورة سداد عبر انستاباي (InstaPay)' : 'فاتورة بيع نقدي خالصة')
+        };
+
+        fetch('/api/pos/checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                playBeep();
+                showToast('تم حفظ الفاتورة بنجاح! جارِ الانتقال للطباعة...', 'success');
+                setTimeout(() => {
+                    window.location.href = data.redirectUrl;
+                }, 400);
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-printer-fill fs-5"></i><span>إتمام البيع وطباعة الفاتورة</span>';
+                showToast(data.message || 'حدث خطأ أثناء إتمام البيع', 'danger');
+                alert(data.message || 'تعذر حفظ الفاتورة.');
+            }
+        })
+        .catch(err => {
+            console.error('POS Checkout Error:', err);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-printer-fill fs-5"></i><span>إتمام البيع وطباعة الفاتورة</span>';
+            showToast('خطأ في الاتصال بالسيرفر', 'danger');
+            alert('حدث خطأ في الاتصال بالخادم أثناء محاولة حفظ الفاتورة.');
+        });
+    }
+
+    // ==========================================
+    // BRAND FILTERING FOR QUICK PRODUCTS
+    // ==========================================
+    function filterQuickProducts(brandName, btn) {
+        // Toggle active button styling
+        document.querySelectorAll('#posBrandFilters .brand-filter-btn').forEach(b => {
+            b.classList.remove('btn-primary', 'active');
+            b.classList.add('btn-light');
+        });
+        if (btn) {
+            btn.classList.remove('btn-light');
+            btn.classList.add('btn-primary', 'active');
+        }
+
+        const cards = document.querySelectorAll('#quickProductsGrid .product-card-col');
+        cards.forEach(card => {
+            const cardBrand = (card.getAttribute('data-brand') || '').trim();
+            if (brandName === 'all' || cardBrand.toLowerCase() === brandName.toLowerCase()) {
+                card.classList.remove('d-none');
+            } else {
+                card.classList.add('d-none');
+            }
+        });
+    }
+
+    // ==========================================
+    // CASHIER SHIFT & DRAWER MANAGEMENT
+    // ==========================================
+    let currentShiftState = {
+        hasOpenShift: false,
+        shiftId: 0,
+        startingCash: 0,
+        expectedCash: 0,
+        cashSales: 0,
+        otherSales: 0
+    };
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadShiftStatus();
+        // Refresh shift stats every 60 seconds
+        setInterval(loadShiftStatus, 60000);
+    });
+
+    function onPaymentMethodChange() {
+        const method = parseInt(document.getElementById('cartPaymentMethod').value) || 1;
+        const refGroup = document.getElementById('paymentRefGroup');
+        const refLabel = document.getElementById('paymentRefLabel');
+        const refInput = document.getElementById('cartPaymentRefNumber');
+
+        if (method === 5) { // InstaPay
+            refGroup.classList.remove('d-none');
+            refLabel.innerHTML = '<i class="bi bi-lightning-charge-fill text-warning ms-1"></i>رقم تحويل انستاباي / الحساب المستلم عليه:';
+            refInput.placeholder = 'أدخل رقم الهاتف أو الحساب أو رقم عملية تحويل InstaPay';
+            refInput.focus();
+        } else if (method === 2) { // Card / Visa
+            refGroup.classList.remove('d-none');
+            refLabel.innerHTML = '<i class="bi bi-credit-card-2-front text-info ms-1"></i>رقم إيصال / عملية الفيزا (اختياري):';
+            refInput.placeholder = 'رقم مرجع الماكينة / POS Ref';
+        } else if (method === 3) { // Transfer
+            refGroup.classList.remove('d-none');
+            refLabel.innerHTML = '<i class="bi bi-bank text-primary ms-1"></i>رقم التحويل البنكي / المحفظة:';
+            refInput.placeholder = 'رقم العملية أو رقم المحفظة المستلم عليها';
+        } else {
+            refGroup.classList.add('d-none');
+            refInput.value = '';
+        }
+    }
+
+    function loadShiftStatus() {
+        fetch('/api/pos/shift/status')
+            .then(res => res.json())
+            .then(data => {
+                currentShiftState = data;
+                const badge = document.getElementById('shiftStatusIndicator');
+                const badgeText = document.getElementById('shiftStatusBadgeText');
+                const btnOpen = document.getElementById('btnOpenShiftModal');
+                const btnClose = document.getElementById('btnCloseShiftModal');
+
+                if (data.hasOpenShift) {
+                    badge.className = 'badge bg-success p-2 px-3 rounded-pill d-flex align-items-center gap-1';
+                    badgeText.innerText = 'الوردية مفتوحة (الدرج يعمل)';
+                    btnOpen.classList.add('d-none');
+                    btnClose.classList.remove('d-none');
+
+                    document.getElementById('shiftStartingCashText').innerText = (data.startingCash || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) + ' ج.م';
+                    document.getElementById('shiftCashSalesText').innerText = (data.cashSales || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) + ' ج.م';
+                    if (document.getElementById('shiftInstaPaySalesText')) {
+                        document.getElementById('shiftInstaPaySalesText').innerText = (data.instaPaySales || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) + ' ج.م';
+                    }
+                    if (document.getElementById('shiftVisaSalesText')) {
+                        document.getElementById('shiftVisaSalesText').innerText = (data.visaSales || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) + ' ج.م';
+                    }
+                    document.getElementById('shiftExpectedCashText').innerText = (data.expectedCash || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) + ' ج.م';
+                } else {
+                    badge.className = 'badge bg-danger p-2 px-3 rounded-pill d-flex align-items-center gap-1';
+                    badgeText.innerText = 'الوردية مغلقة (يجب فتح الدرج)';
+                    btnOpen.classList.remove('d-none');
+                    btnClose.classList.add('d-none');
+
+                    document.getElementById('shiftStartingCashText').innerText = '0.00 ج.م';
+                    document.getElementById('shiftCashSalesText').innerText = '0.00 ج.م';
+                    if (document.getElementById('shiftInstaPaySalesText')) {
+                        document.getElementById('shiftInstaPaySalesText').innerText = '0.00 ج.م';
+                    }
+                    if (document.getElementById('shiftVisaSalesText')) {
+                        document.getElementById('shiftVisaSalesText').innerText = '0.00 ج.م';
+                    }
+                    document.getElementById('shiftExpectedCashText').innerText = '0.00 ج.م';
+                }
+            })
+            .catch(() => {});
+    }
+
+    function openStartShiftModal() {
+        document.getElementById('openShiftError').classList.add('d-none');
+        document.getElementById('openShiftStartingCash').value = '';
+        document.getElementById('openShiftNotes').value = '';
+        const modal = new bootstrap.Modal(document.getElementById('openShiftModal'));
+        modal.show();
+        setTimeout(() => document.getElementById('openShiftStartingCash').focus(), 400);
+    }
+
+    function submitOpenShift() {
+        const input = document.getElementById('openShiftStartingCash');
+        const errDiv = document.getElementById('openShiftError');
+        const startAmount = parseFloat(input.value);
+
+        if (isNaN(startAmount) || startAmount < 0) {
+            errDiv.textContent = 'يرجى إدخال مبلغ صحيح لرصيد بداية اليوم (0 أو أكثر).';
+            errDiv.classList.remove('d-none');
+            input.focus();
+            return;
+        }
+
+        const btn = document.getElementById('btnSubmitOpenShift');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm ms-1"></span> جاري الفتح...';
+
+        fetch('/api/pos/shift/open', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                startingCash: startAmount,
+                notes: document.getElementById('openShiftNotes').value.trim()
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-circle-fill ms-1"></i> فتح الوردية وبدء العمل';
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('openShiftModal')).hide();
+                showToast(data.message, 'success');
+                loadShiftStatus();
+            } else {
+                errDiv.textContent = data.message || 'حدث خطأ أثناء فتح الوردية';
+                errDiv.classList.remove('d-none');
+            }
+        })
+        .catch(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-circle-fill ms-1"></i> فتح الوردية وبدء العمل';
+            errDiv.textContent = 'خطأ في الاتصال بالسيرفر';
+            errDiv.classList.remove('d-none');
+        });
+    }
+
+    function openCloseShiftModal() {
+        if (!currentShiftState.hasOpenShift) {
+            showToast('لا توجد وردية مفتوحة حالياً لتصفيتها!', 'warning');
+            return;
+        }
+
+        document.getElementById('closeModalStartingCash').innerText = (currentShiftState.startingCash || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) + ' ج.م';
+        document.getElementById('closeModalCashSales').innerText = (currentShiftState.cashSales || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) + ' ج.م';
+        if (document.getElementById('closeModalInstaPaySales')) {
+            document.getElementById('closeModalInstaPaySales').innerText = (currentShiftState.instaPaySales || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) + ' ج.م';
+        }
+        if (document.getElementById('closeModalVisaSales')) {
+            document.getElementById('closeModalVisaSales').innerText = (currentShiftState.visaSales || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) + ' ج.م';
+        }
+        document.getElementById('closeModalExpectedCash').innerText = (currentShiftState.expectedCash || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) + ' ج.م';
+
+        const actualInput = document.getElementById('closeShiftActualCash');
+        actualInput.value = '';
+        document.getElementById('closeShiftNotes').value = '';
+
+        const diffAlert = document.getElementById('shiftDiffAlert');
+        diffAlert.className = 'alert alert-secondary py-2 px-3 text-center mb-0 fw-bold fs-6';
+        diffAlert.innerText = 'يرجى إدخال المبلغ الفعلي الموجود في الدرج لحساب النتيجة';
+
+        const modal = new bootstrap.Modal(document.getElementById('closeShiftModal'));
+        modal.show();
+        setTimeout(() => actualInput.focus(), 400);
+    }
+
+    function calculateShiftDifference() {
+        const actualVal = parseFloat(document.getElementById('closeShiftActualCash').value);
+        const diffAlert = document.getElementById('shiftDiffAlert');
+        const expected = currentShiftState.expectedCash || 0;
+
+        if (isNaN(actualVal)) {
+            diffAlert.className = 'alert alert-secondary py-2 px-3 text-center mb-0 fw-bold fs-6';
+            diffAlert.innerText = 'يرجى إدخال المبلغ الفعلي الموجود في الدرج لحساب النتيجة';
+            return;
+        }
+
+        const diff = actualVal - expected;
+        if (Math.abs(diff) < 0.01) {
+            diffAlert.className = 'alert alert-success py-2 px-3 text-center mb-0 fw-bold fs-6';
+            diffAlert.innerHTML = '<i class="bi bi-check-circle-fill ms-1"></i> النقدية مطابقة تماماً! لا يوجد أي عجز أو زيادة (0.00 ج.م)';
+        } else if (diff < 0) {
+            diffAlert.className = 'alert alert-danger py-2 px-3 text-center mb-0 fw-bold fs-6';
+            diffAlert.innerHTML = `<i class="bi bi-exclamation-triangle-fill ms-1"></i> عجز في الدرج بمقدار: <span class="fs-5">${Math.abs(diff).toLocaleString('en-US', { minimumFractionDigits: 2 })} ج.م</span>`;
+        } else {
+            diffAlert.className = 'alert alert-warning py-2 px-3 text-center mb-0 fw-bold fs-6';
+            diffAlert.innerHTML = `<i class="bi bi-info-circle-fill ms-1"></i> زيادة في الدرج بمقدار: <span class="fs-5">+${diff.toLocaleString('en-US', { minimumFractionDigits: 2 })} ج.م</span>`;
+        }
+    }
+
+    function submitCloseShift() {
+        const actualVal = parseFloat(document.getElementById('closeShiftActualCash').value);
+        if (isNaN(actualVal) || actualVal < 0) {
+            alert('يرجى إدخال المبلغ الفعلي الموجود في الدرج بعد العد.');
+            document.getElementById('closeShiftActualCash').focus();
+            return;
+        }
+
+        if (!confirm('هل أنت متأكد من رغبتك في اعتماد إغلاق الوردية وتصفية حسابات اليوم؟')) {
+            return;
+        }
+
+        const btn = document.getElementById('btnSubmitCloseShift');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm ms-1"></span> جاري اعتماد التقفيل...';
+
+        fetch('/api/pos/shift/close', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                shiftId: currentShiftState.shiftId,
+                actualCash: actualVal,
+                notes: document.getElementById('closeShiftNotes').value.trim()
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-lock-fill ms-1"></i> اعتماد التقفيل وإنهاء اليوم';
+
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('closeShiftModal')).hide();
+                alert(`✅ ${data.message}\n\nإجمالي مبيعات اليوم: ${data.summary.totalSales.toLocaleString()} ج.م\nالأرباح التقديرية: ${data.summary.estimatedProfit.toLocaleString()} ج.م\nالنتيجة: ${data.summary.diffStatusAr}`);
+                loadShiftStatus();
+            } else {
+                alert(data.message || 'تعذر إغلاق الوردية');
+            }
+        })
+        .catch(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-lock-fill ms-1"></i> اعتماد التقفيل وإنهاء اليوم';
+            alert('خطأ في الاتصال بالخادم');
+        });
+    }
+</script>
+}

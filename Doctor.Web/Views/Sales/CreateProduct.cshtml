@@ -1,0 +1,196 @@
+@model Doctor.Web.Models.Entities.Product
+@{
+    ViewData["Title"] = "إضافة هاتف / جهاز جديد";
+    var brands = ViewBag.Brands as List<Doctor.Web.Models.Entities.Brand> ?? new();
+    var categories = ViewBag.Categories as List<Doctor.Web.Models.Entities.ProductCategory> ?? new();
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h3 class="fw-bold mb-1 text-dark"><i class="bi bi-phone-fill text-primary ms-2"></i>إضافة جهاز موبايل جديد</h3>
+        <p class="text-muted small mb-0">تسجيل بيانات الجهاز، الشركة، المواصفات، الأسعار، ورصيد المخزن</p>
+    </div>
+    <a href="@Url.Action("Products", "Sales")" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1 shadow-sm">
+        <i class="bi bi-arrow-right"></i>
+        <span>العودة لقائمة الأجهزة</span>
+    </a>
+</div>
+
+<div class="card shadow-sm border-0 rounded-4 overflow-hidden">
+    <div class="card-header bg-white border-bottom py-3 px-4">
+        <h6 class="mb-0 fw-bold text-primary"><i class="bi bi-info-circle-fill ms-1"></i>بيانات ومواصفات الجهاز</h6>
+    </div>
+    <div class="card-body p-4">
+        <form asp-action="CreateProduct" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="ProductType" value="1" />
+            
+            @if (categories.Any())
+            {
+                <input type="hidden" asp-for="ProductCategoryId" value="@categories.First().Id" />
+            }
+
+            <div asp-validation-summary="All" class="text-danger small mb-3"></div>
+
+            <div class="row g-3">
+                <!-- 1. Device Name -->
+                <div class="col-12 col-md-8">
+                    <label asp-for="Name" class="form-label small fw-bold text-dark">
+                        <i class="bi bi-phone text-primary ms-1"></i>اسم الجهاز والموديل <span class="text-danger">*</span>
+                    </label>
+                    <input asp-for="Name" class="form-control form-control-lg fs-6" placeholder="مثال: Samsung Galaxy S24 Ultra أو iPhone 15 Pro Max" required autocomplete="off" />
+                </div>
+
+                <!-- 2. Brand / Company -->
+                <div class="col-12 col-md-4">
+                    <label asp-for="BrandId" class="form-label small fw-bold text-dark">
+                        <i class="bi bi-building text-info ms-1"></i>الشركة / الماركة <span class="text-danger">*</span>
+                    </label>
+                    <select asp-for="BrandId" class="form-select form-select-lg fs-6" required>
+                        <option value="">-- اختر الشركة --</option>
+                        @foreach (var b in brands)
+                        {
+                            <option value="@b.Id">@b.Name</option>
+                        }
+                    </select>
+                </div>
+
+                <!-- 3. Storage Space -->
+                <div class="col-6 col-md-3">
+                    <label asp-for="Storage" class="form-label small fw-bold text-dark">
+                        <i class="bi bi-hdd-fill text-warning ms-1"></i>مساحة التخزين <span class="text-danger">*</span>
+                    </label>
+                    <select asp-for="Storage" class="form-select">
+                        <option value="128GB">128 GB</option>
+                        <option value="256GB" selected>256 GB</option>
+                        <option value="512GB">512 GB</option>
+                        <option value="1TB">1 TB</option>
+                        <option value="64GB">64 GB</option>
+                        <option value="32GB">32 GB</option>
+                    </select>
+                </div>
+
+                <!-- 4. RAM -->
+                <div class="col-6 col-md-3">
+                    <label asp-for="Ram" class="form-label small fw-bold text-dark">
+                        <i class="bi bi-memory text-danger ms-1"></i>الرام (الذاكرة) <span class="text-danger">*</span>
+                    </label>
+                    <select asp-for="Ram" class="form-select">
+                        <option value="8GB" selected>8 GB</option>
+                        <option value="12GB">12 GB</option>
+                        <option value="16GB">16 GB</option>
+                        <option value="6GB">6 GB</option>
+                        <option value="4GB">4 GB</option>
+                        <option value="3GB">3 GB</option>
+                    </select>
+                </div>
+
+                <!-- 5. Color -->
+                <div class="col-6 col-md-3">
+                    <label asp-for="Color" class="form-label small fw-bold text-dark">
+                        <i class="bi bi-palette-fill text-secondary ms-1"></i>اللون
+                    </label>
+                    <input asp-for="Color" class="form-control" placeholder="أسود، أزرق، تيتانيوم..." />
+                </div>
+
+                <!-- 6. IMEI / Serial Number -->
+                <div class="col-6 col-md-3">
+                    <label asp-for="SerialNumberOrImei" class="form-label small fw-bold text-dark">
+                        <i class="bi bi-upc text-primary ms-1"></i>رقم IMEI / السيريال
+                    </label>
+                    <div class="input-group">
+                        <input asp-for="SerialNumberOrImei" id="imeiInput" class="form-control font-monospace" placeholder="35xxxxxxxxxxxx" />
+                        <button type="button" class="btn btn-outline-info" onclick="openCameraScanner(code => document.getElementById('imeiInput').value = code)" title="مسح IMEI بالكاميرا">
+                            <i class="bi bi-camera-fill"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Section: Financials & Stock -->
+                <div class="col-12 mt-4">
+                    <h6 class="fw-bold text-dark border-bottom pb-2">
+                        <i class="bi bi-cash-coin text-success ms-1"></i>الأسعار والكمية المتاحة في المخزن
+                    </h6>
+                </div>
+
+                <!-- 7. Purchase Price (Cost) -->
+                <div class="col-12 col-md-4">
+                    <label asp-for="PurchasePrice" class="form-label small fw-bold text-dark">
+                        سعر الشراء (التكلفة) <span class="text-danger">*</span>
+                    </label>
+                    <div class="input-group input-group-lg">
+                        <input asp-for="PurchasePrice" type="number" step="any" min="0" class="form-control fw-bold font-monospace" placeholder="0.00" required />
+                        <span class="input-group-text fw-bold">ج.م</span>
+                    </div>
+                </div>
+
+                <!-- 8. Selling Price -->
+                <div class="col-12 col-md-4">
+                    <label asp-for="SellingPrice" class="form-label small fw-bold text-dark">
+                        سعر البيع للجمهور <span class="text-danger">*</span>
+                    </label>
+                    <div class="input-group input-group-lg">
+                        <input asp-for="SellingPrice" type="number" step="any" min="0" class="form-control fw-bold text-primary font-monospace" placeholder="0.00" required />
+                        <span class="input-group-text fw-bold text-primary">ج.م</span>
+                    </div>
+                </div>
+
+                <!-- 9. Quantity in Stock -->
+                <div class="col-12 col-md-4">
+                    <label asp-for="StockQuantity" class="form-label small fw-bold text-dark">
+                        الكمية المتوفرة بالمخزن <span class="text-danger">*</span>
+                    </label>
+                    <div class="input-group input-group-lg">
+                        <input asp-for="StockQuantity" type="number" min="0" class="form-control fw-bold text-success font-monospace" value="1" required />
+                        <span class="input-group-text fw-bold text-success">أجهزة</span>
+                    </div>
+                </div>
+
+                <!-- Barcode Generation -->
+                <div class="col-12 col-md-8 mt-3">
+                    <label asp-for="Barcode" class="form-label small fw-bold text-dark">
+                        الباركود (Barcode) <span class="text-danger">*</span>
+                    </label>
+                    <div class="input-group">
+                        <input asp-for="Barcode" id="barcodeInput" class="form-control font-monospace" placeholder="امسح الباركود أو سيتم التوليد تلقائياً" required />
+                        <button type="button" class="btn btn-outline-info" onclick="openCameraScanner(code => document.getElementById('barcodeInput').value = code)" title="مسح الباركود بالكاميرا">
+                            <i class="bi bi-camera-fill"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="generateRandomBarcode()">
+                            <i class="bi bi-magic ms-1"></i> توليد باركود
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Min Alert Level -->
+                <div class="col-12 col-md-4 mt-3">
+                    <label asp-for="MinStockLevel" class="form-label small fw-bold text-dark">الحد الأدنى لتنبيه النواقص</label>
+                    <input asp-for="MinStockLevel" type="number" class="form-control" value="2" min="1" />
+                </div>
+
+                <!-- Notes -->
+                <div class="col-12 mt-2">
+                    <label asp-for="Notes" class="form-label small fw-bold text-dark">ملاحظات إضافية عن الجهاز</label>
+                    <textarea asp-for="Notes" class="form-control" rows="2" placeholder="الضمان، حالة العلبة، الشاحن، أو أي ملاحظات هامة..."></textarea>
+                </div>
+            </div>
+
+            <div class="mt-4 pt-3 border-top d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <a href="@Url.Action("Products", "Sales")" class="btn btn-light px-4">إلغاء</a>
+                <button type="submit" class="btn btn-primary px-5 py-2 fw-bold shadow-sm d-flex align-items-center gap-2">
+                    <i class="bi bi-check-circle-fill fs-5"></i>
+                    <span>حفظ الجهاز وإضافته للمخزون والكاشير فوراً</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function generateRandomBarcode() {
+        const rand = Math.floor(100000000000 + Math.random() * 900000000000);
+        document.getElementById('barcodeInput').value = rand.toString();
+    }
+</script>
+}

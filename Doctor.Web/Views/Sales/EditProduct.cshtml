@@ -1,0 +1,139 @@
+@model Doctor.Web.Models.Entities.Product
+@{
+    ViewData["Title"] = $"تعديل جهاز - {Model.Name}";
+    var brands = ViewBag.Brands as List<Doctor.Web.Models.Entities.Brand> ?? new();
+    var categories = ViewBag.Categories as List<Doctor.Web.Models.Entities.ProductCategory> ?? new();
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h3 class="fw-bold mb-1"><i class="bi bi-pencil-square text-primary ms-2"></i>تعديل بيانات الجهاز</h3>
+        <p class="text-muted small mb-0">@Model.Name (باركود: @Model.Barcode)</p>
+    </div>
+    <a href="@Url.Action("Products", "Sales")" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-right ms-1"></i> العودة لقائمة الأجهزة
+    </a>
+</div>
+
+<div class="card shadow-sm border-0 rounded-4 overflow-hidden">
+    <div class="card-header bg-white border-bottom py-3 px-4">
+        <h6 class="mb-0 fw-bold text-primary"><i class="bi bi-phone ms-1"></i>بيانات ومواصفات الجهاز</h6>
+    </div>
+    <div class="card-body p-4">
+        <form asp-action="EditProduct" asp-route-id="@Model.Id" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="Id" />
+            <input type="hidden" asp-for="ProductType" value="1" />
+
+            <div class="row g-3">
+                <div class="col-12 col-md-8">
+                    <label asp-for="Name" class="form-label small fw-bold">اسم الجهاز والموديل <span class="text-danger">*</span></label>
+                    <input asp-for="Name" class="form-control" required />
+                </div>
+
+                <div class="col-12 col-md-4">
+                    <label asp-for="BrandId" class="form-label small fw-bold">الشركة / الماركة <span class="text-danger">*</span></label>
+                    <select asp-for="BrandId" class="form-select" required>
+                        <option value="">-- اختر الشركة --</option>
+                        @foreach (var b in brands)
+                        {
+                            <option value="@b.Id" selected="@(b.Id == Model.BrandId)">@b.Name</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="col-6 col-md-3">
+                    <label asp-for="Storage" class="form-label small fw-bold">سعة التخزين</label>
+                    <input asp-for="Storage" class="form-control" placeholder="مثال: 128GB / 256GB" />
+                </div>
+
+                <div class="col-6 col-md-3">
+                    <label asp-for="Ram" class="form-label small fw-bold">الرام (RAM)</label>
+                    <input asp-for="Ram" class="form-control" placeholder="مثال: 8GB / 12GB" />
+                </div>
+
+                <div class="col-6 col-md-3">
+                    <label asp-for="Color" class="form-label small fw-bold">اللون</label>
+                    <input asp-for="Color" class="form-control" />
+                </div>
+
+                <div class="col-6 col-md-3">
+                    <label asp-for="SerialNumberOrImei" class="form-label small fw-bold">رقم IMEI / السيريال</label>
+                    <div class="input-group">
+                        <input asp-for="SerialNumberOrImei" id="editImeiInput" class="form-control font-monospace" />
+                        <button type="button" class="btn btn-outline-info" onclick="openCameraScanner(code => document.getElementById('editImeiInput').value = code)" title="مسح IMEI بالكاميرا">
+                            <i class="bi bi-camera-fill"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-8">
+                    <label asp-for="Barcode" class="form-label small fw-bold">الباركود (Barcode) <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <input asp-for="Barcode" id="editBarcodeInput" class="form-control font-monospace" required />
+                        <button type="button" class="btn btn-outline-info" onclick="openCameraScanner(code => document.getElementById('editBarcodeInput').value = code)" title="مسح الباركود بالكاميرا">
+                            <i class="bi bi-camera-fill"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <label asp-for="Sku" class="form-label small fw-bold">كود التخزين (SKU)</label>
+                    <input asp-for="Sku" class="form-control" />
+                </div>
+
+                <div class="col-12 col-md-4">
+                    <label asp-for="PurchasePrice" class="form-label small fw-bold">سعر الشراء (التكلفة) <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <input asp-for="PurchasePrice" type="number" step="any" min="0" class="form-control font-monospace" required />
+                        <span class="input-group-text">ج.م</span>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <label asp-for="SellingPrice" class="form-label small fw-bold">سعر البيع للجمهور <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <input asp-for="SellingPrice" type="number" step="any" min="0" class="form-control fw-bold text-primary font-monospace" required />
+                        <span class="input-group-text fw-bold text-primary">ج.م</span>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <label asp-for="StockQuantity" class="form-label small fw-bold">الرصيد المتاح بالمخزن <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <input asp-for="StockQuantity" type="number" min="0" class="form-control fw-bold text-success font-monospace" required />
+                        <span class="input-group-text text-success">أجهزة</span>
+                    </div>
+                </div>
+
+                @if (categories.Any())
+                {
+                    <input type="hidden" asp-for="ProductCategoryId" value="@(Model.ProductCategoryId > 0 ? Model.ProductCategoryId : categories.First().Id)" />
+                }
+
+                <div class="col-12 col-md-4">
+                    <label asp-for="MinStockLevel" class="form-label small fw-bold">الحد الأدنى لتنبيه المخزون</label>
+                    <input asp-for="MinStockLevel" type="number" class="form-control" />
+                </div>
+
+                <div class="col-12">
+                    <label asp-for="Notes" class="form-label small fw-bold">ملاحظات ومواصفات إضافية</label>
+                    <textarea asp-for="Notes" class="form-control" rows="2"></textarea>
+                </div>
+
+                <div class="col-12">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" asp-for="IsActive" id="isActiveCheck">
+                        <label class="form-check-label small fw-bold" for="isActiveCheck">
+                            الجهاز نشط ومتاح للبيع في الكاشير
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4 pt-3 border-top d-flex justify-content-between align-items-center">
+                <a href="@Url.Action("Products", "Sales")" class="btn btn-light px-4">إلغاء</a>
+                <button type="submit" class="btn btn-primary px-4 fw-bold shadow-sm">
+                    <i class="bi bi-save ms-1"></i> حفظ التعديلات
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

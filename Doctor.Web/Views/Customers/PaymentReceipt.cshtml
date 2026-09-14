@@ -1,0 +1,165 @@
+@model Doctor.Web.Models.Entities.Payment
+@{
+    ViewData["Title"] = $"سند سداد - {Model.ReferenceNumber ?? Model.Id.ToString()}";
+    var customer = Model.Sale?.Customer;
+    decimal remainingDebt = ViewBag.RemainingDebt ?? 0m;
+    string centerName = "الدكتور";
+    string centerAddress = "محافظة المنيا - مركز العدوه - شارع مصطفي كامل - بجوار مستشفي كرامه";
+    string centerPhone = "01001234567";
+}
+
+<!-- Action Toolbar (Hidden in Print) -->
+<div class="d-flex justify-content-between align-items-center mb-3 no-print flex-wrap gap-2">
+    <div>
+        @if (customer != null)
+        {
+            <a href="@Url.Action("Details", "Customers", new { id = customer.Id })" class="btn btn-outline-secondary btn-sm me-1">
+                <i class="bi bi-arrow-right ms-1"></i> العودة لكشف حساب العميل
+            </a>
+        }
+        else
+        {
+            <a href="@Url.Action("Index", "Customers")" class="btn btn-outline-secondary btn-sm me-1">
+                <i class="bi bi-arrow-right ms-1"></i> قائمة العملاء
+            </a>
+        }
+        <a href="@Url.Action("Pos", "Sales")" class="btn btn-primary btn-sm">
+            <i class="bi bi-cart-plus ms-1"></i> نقطة البيع (POS)
+        </a>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <div class="btn-group btn-group-sm" role="group">
+            <button type="button" class="btn btn-outline-dark active" id="btnSize80" onclick="setSize('80mm')">80mm قياسي</button>
+            <button type="button" class="btn btn-outline-dark" id="btnSize58" onclick="setSize('58mm')">58mm ميني حراري</button>
+        </div>
+
+        <button type="button" class="btn btn-success btn-sm d-flex align-items-center gap-1 shadow-sm" onclick="window.print()">
+            <i class="bi bi-printer-fill"></i> طباعة إيصال السداد
+        </button>
+    </div>
+</div>
+
+<!-- PAYMENT THERMAL CONTAINER -->
+<div class="thermal-preview-container">
+    <div class="thermal-receipt size-80mm" id="receiptPaper">
+        <!-- Header -->
+        <div class="receipt-store-title">@centerName</div>
+        <div class="receipt-store-sub">للهواتف الذكية والأجهزة والمبيعات</div>
+        <div class="receipt-store-sub"><i class="bi bi-geo-alt"></i> @centerAddress</div>
+        <div class="receipt-store-sub"><i class="bi bi-telephone"></i> @centerPhone</div>
+
+        <div class="receipt-dashed-line"></div>
+
+        <div class="text-center my-2">
+            <h5 class="fw-bold mb-0 text-dark">إيصال استلام نقدية / سند قبض</h5>
+            <small class="text-muted">Payment Receipt Voucher</small>
+        </div>
+
+        <div class="receipt-dashed-line"></div>
+
+        <!-- Meta info -->
+        <div class="receipt-meta-row">
+            <span>رقم السند:</span>
+            <strong class="font-monospace">@(Model.ReferenceNumber ?? $"REC-{Model.Id:D5}")</strong>
+        </div>
+        <div class="receipt-meta-row">
+            <span>تاريخ وتوقيت السداد:</span>
+            <span>@Model.CreatedAt.ToString("yyyy/MM/dd hh:mm tt")</span>
+        </div>
+        @if (customer != null)
+        {
+            <div class="receipt-meta-row">
+                <span>اسم العميل:</span>
+                <strong>@customer.Name</strong>
+            </div>
+            @if (!string.IsNullOrEmpty(customer.PhoneNumber) && customer.PhoneNumber != "بدون هاتف")
+            {
+                <div class="receipt-meta-row">
+                    <span>رقم الهاتف:</span>
+                    <span class="font-monospace">@customer.PhoneNumber</span>
+                </div>
+            }
+        }
+        @if (Model.Sale != null)
+        {
+            <div class="receipt-meta-row">
+                <span>الفاتورة المرتبطة:</span>
+                <strong class="font-monospace">@Model.Sale.InvoiceNumber</strong>
+            </div>
+        }
+        <div class="receipt-meta-row">
+            <span>طريقة الدفع:</span>
+            <strong>@Model.PaymentMethod</strong>
+        </div>
+
+        <div class="receipt-dashed-line"></div>
+
+        <!-- Amount Box -->
+        <div class="p-3 my-2 text-center rounded border bg-light">
+            <div class="small text-muted mb-1">المبلغ المسدد المقبوض</div>
+            <div class="display-6 fw-bold text-success">@Model.Amount.ToString("N2") <span class="fs-5">ج.م</span></div>
+        </div>
+
+        <!-- Notes / Memo -->
+        @if (!string.IsNullOrEmpty(Model.Notes))
+        {
+            <div class="receipt-meta-row flex-column align-items-start my-2">
+                <span class="text-muted small">البيان وملاحظات السداد:</span>
+                <strong class="small text-dark mt-1">@Model.Notes</strong>
+            </div>
+        }
+
+        <div class="receipt-dashed-line"></div>
+
+        <!-- Customer Debt Balance After Payment -->
+        <div class="receipt-meta-row">
+            <span>صافي المتبقي على العميل:</span>
+            @if (remainingDebt > 0)
+            {
+                <strong class="text-danger">@remainingDebt.ToString("N2") ج.م</strong>
+            }
+            else
+            {
+                <strong class="text-success">0.00 ج.م (خالص بالكامل)</strong>
+            }
+        </div>
+
+        <div class="receipt-dashed-line"></div>
+
+        <!-- Signature & Footer -->
+        <div class="d-flex justify-content-between align-items-center mt-3 small text-muted">
+            <div class="text-center">
+                <span>توقيع العميل</span>
+                <div style="height: 35px;"></div>
+                <span>....................</span>
+            </div>
+            <div class="text-center">
+                <span>توقيع المستلم / الكاشير</span>
+                <div style="height: 35px;"></div>
+                <span>....................</span>
+            </div>
+        </div>
+
+        <div class="receipt-footer mt-3">
+            <div>نشكركم لتعاملكم معنا!</div>
+            <div class="mt-1" style="font-size: 0.65rem;">نظام دكتور لإدارة نقاط البيع والأجهزة</div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function setSize(size) {
+        const paper = document.getElementById('receiptPaper');
+        if (size === '58mm') {
+            paper.className = 'thermal-receipt size-58mm';
+            document.getElementById('btnSize58').classList.add('active');
+            document.getElementById('btnSize80').classList.remove('active');
+        } else {
+            paper.className = 'thermal-receipt size-80mm';
+            document.getElementById('btnSize80').classList.add('active');
+            document.getElementById('btnSize58').classList.remove('active');
+        }
+    }
+</script>
+}

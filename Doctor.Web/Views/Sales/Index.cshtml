@@ -1,0 +1,97 @@
+@model List<Doctor.Web.Models.Entities.Sale>
+@{
+    ViewData["Title"] = "لوحة المبيعات";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h3 class="fw-bold mb-1"><i class="bi bi-cart3 text-primary ms-2"></i>لوحة المبيعات ونقاط البيع</h3>
+        <p class="text-muted small mb-0">متابعة الفواتير اليومية، حركة الكاشير، ونواقص الأجهزة والهواتف</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="@Url.Action("Pos", "Sales")" class="btn btn-primary shadow-sm d-flex align-items-center gap-2">
+            <i class="bi bi-calculator fs-5"></i>
+            <span class="fw-bold">فتح شاشة الكاشير (POS)</span>
+        </a>
+        <a href="@Url.Action("CreateProduct", "Sales")" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1">
+            <i class="bi bi-plus-circle"></i> إضافة جهاز جديد
+        </a>
+    </div>
+</div>
+
+<!-- Quick Stats -->
+<div class="row g-3 mb-4">
+    <div class="col-xl-4 col-md-6">
+        <div class="stat-card stat-primary">
+            <div class="stat-title">مبيعات اليوم</div>
+            <div class="stat-value">@(((decimal)ViewBag.TodaySales).ToString("N0")) <span class="fs-6 text-muted">ج.م</span></div>
+            <div class="mt-2 text-muted small"><i class="bi bi-receipt ms-1"></i> عدد الفواتير اليوم: <strong>@ViewBag.TodayInvoicesCount فاتورة</strong></div>
+        </div>
+    </div>
+    <div class="col-xl-4 col-md-6">
+        <div class="stat-card stat-success">
+            <div class="stat-title">مبيعات هذا الشهر</div>
+            <div class="stat-value">@(((decimal)ViewBag.MonthSales).ToString("N0")) <span class="fs-6 text-muted">ج.م</span></div>
+            <div class="mt-2 text-success small fw-bold"><i class="bi bi-graph-up ms-1"></i> أداء المبيعات الشهري</div>
+        </div>
+    </div>
+    <div class="col-xl-4 col-md-6">
+        <div class="stat-card stat-indigo">
+            <div class="stat-title">مخزون الهواتف والأجهزة</div>
+            <div class="stat-value">@ViewBag.DevicesCount <span class="fs-6 text-muted">جهاز بالمخزن</span></div>
+            <div class="mt-2 text-muted small"><a href="@Url.Action("Products", "Sales")" class="text-decoration-none">عرض قائمة الأجهزة &larr;</a></div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Invoices Table -->
+<div class="card shadow-sm">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <h6 class="fw-bold mb-0"><i class="bi bi-clock-history ms-2 text-primary"></i>آخر الفواتير الصادرة</h6>
+        <a href="@Url.Action("Invoices", "Sales")" class="btn btn-sm btn-outline-primary">كافة الفواتير</a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light small">
+                <tr>
+                    <th>رقم الفاتورة</th>
+                    <th>الوقت والتاريخ</th>
+                    <th>العميل</th>
+                    <th>الموظف</th>
+                    <th>طريقة الدفع</th>
+                    <th>الإجمالي</th>
+                    <th>الحالة</th>
+                    <th>إجراء</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Any())
+                {
+                    foreach (var s in Model)
+                    {
+                        <tr>
+                            <td><strong class="text-primary">@s.InvoiceNumber</strong></td>
+                            <td class="small">@s.CreatedAt.ToString("yyyy/MM/dd HH:mm")</td>
+                            <td>@(s.Customer?.Name ?? "عميل نقدي")</td>
+                            <td>@s.User.FullName</td>
+                            <td><span class="badge bg-light text-dark border">@s.PaymentMethod</span></td>
+                            <td class="fw-bold">@s.TotalAmount.ToString("N2") ج.م</td>
+                            <td><span class="badge bg-success-subtle text-success">مكتملة</span></td>
+                            <td>
+                                <a href="@Url.Action("Invoice", "Sales", new { id = s.InvoiceNumber })" class="btn btn-sm btn-light border py-1 px-2" title="طباعة وعرض الفاتورة">
+                                    <i class="bi bi-printer ms-1"></i> عرض
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="8" class="text-center py-4 text-muted small">لا توجد فواتير بعد</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

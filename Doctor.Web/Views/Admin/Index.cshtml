@@ -1,0 +1,549 @@
+@model Doctor.Web.ViewModels.DashboardStatsViewModel
+@{
+    ViewData["Title"] = "الرئيسية - دكتور سنتر للهواتف الذكية والمبيعات";
+}
+
+<!-- 1. Hero Banner Matching Mockup -->
+<div class="dashboard-hero-banner">
+    <!-- Right Slogan Badge -->
+    <div class="hero-side-badge d-none d-xl-block">
+        <i class="bi bi-shield-lock-fill text-info mb-1 d-block fs-5"></i>
+        "موبايلك بأمان في أيد أمينة"
+    </div>
+
+    <!-- Center Content -->
+    <div class="hero-content-center">
+        <h2>مرحباً بك في نظام دكتور</h2>
+        <p class="hero-subtitle">إدارة ذكية لسنتر ومبيعات الموبايلات</p>
+        <div class="hero-features-list">
+            <span class="hero-feature-item"><i class="bi bi-people-fill"></i> إدارة سهلة</span>
+            <span class="hero-feature-item"><i class="bi bi-graph-up-arrow"></i> تقارير دقيقة</span>
+            <span class="hero-feature-item"><i class="bi bi-box-seam-fill"></i> مخزون منظم</span>
+            <span class="hero-feature-item"><i class="bi bi-calculator-fill"></i> نقطة بيع سريعة (POS)</span>
+        </div>
+    </div>
+
+    <!-- Left Slogan Badge -->
+    <div class="hero-side-badge d-none d-xl-block">
+        <i class="bi bi-stars text-warning mb-1 d-block fs-5"></i>
+        "كل ما تحتاجه في مكان واحد"
+    </div>
+</div>
+
+<!-- 2. 6 KPI Stat Cards in Responsive Row (Sales & Inventory Focus) -->
+<div class="row g-3 mb-4">
+    <!-- Card 1: Today Sales (Blue) -->
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="kpi-card kpi-blue">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="kpi-title">مبيعات اليوم</span>
+                <div class="kpi-icon-wrap"><i class="bi bi-cart-fill"></i></div>
+            </div>
+            <div>
+                <div class="kpi-value">@Model.TodaySales.ToString("N0") <span class="unit">جنيه</span></div>
+                <div class="kpi-trend text-muted small">
+                    <i class="bi bi-clock-history"></i> تحديث لحظي
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 2: Total Month Sales (Green) -->
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="kpi-card kpi-green">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="kpi-title">مبيعات الشهر</span>
+                <div class="kpi-icon-wrap"><i class="bi bi-cash-stack"></i></div>
+            </div>
+            <div>
+                <div class="kpi-value">@Model.MonthSales.ToString("N0") <span class="unit">جنيه</span></div>
+                <div class="kpi-trend text-muted small">
+                    <i class="bi bi-calendar-check"></i> إجمالي الشهر الحالي
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 3: Estimated Profits (Orange) -->
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="kpi-card kpi-orange">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="kpi-title">أرباح المبيعات</span>
+                <div class="kpi-icon-wrap"><i class="bi bi-graph-up-arrow"></i></div>
+            </div>
+            <div>
+                <div class="kpi-value">@Model.EstimatedProfitThisMonth.ToString("N0") <span class="unit">جنيه</span></div>
+                <div class="kpi-trend text-muted small">
+                    <i class="bi bi-wallet2"></i> صافي الربح التقديري
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 4: Devices in Stock (Purple) -->
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="kpi-card kpi-purple">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="kpi-title">مخزون الهواتف</span>
+                <div class="kpi-icon-wrap"><i class="bi bi-phone"></i></div>
+            </div>
+            <div>
+                <div class="kpi-value">@Model.TotalDevicesInStock.ToString("N0") <span class="unit">جهاز</span></div>
+                <div class="kpi-trend text-muted small">
+                    <i class="bi bi-check-circle"></i> هواتف جاهزة للبيع
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 5: Suppliers in Stock (Teal) -->
+    <div class="col-6 col-md-4 col-xl-2">
+        <a href="@Url.Action("Index", "Suppliers")" class="text-decoration-none">
+            <div class="kpi-card kpi-teal">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="kpi-title">الموردين</span>
+                    <div class="kpi-icon-wrap"><i class="bi bi-truck"></i></div>
+                </div>
+                <div>
+                    <div class="kpi-value">@(ViewBag.SuppliersCount ?? 0) <span class="unit">مورد</span></div>
+                    <div class="kpi-trend text-muted small">
+                        <i class="bi bi-cash-coin"></i> ديون: @(((decimal)(ViewBag.SuppliersDebt ?? 0m)).ToString("N0")) ج.م
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <!-- Card 6: Total Customers (Indigo) -->
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="kpi-card kpi-blue" style="border-top-color: #6366f1;">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="kpi-title">عدد العملاء</span>
+                <div class="kpi-icon-wrap" style="color: #6366f1;"><i class="bi bi-people-fill"></i></div>
+            </div>
+            <div>
+                <div class="kpi-value">@Model.TotalCustomersCount.ToString("N0") <span class="unit">عميل</span></div>
+                <div class="kpi-trend text-muted small">
+                    <i class="bi bi-person-check"></i> قاعدة عملاء السنتر
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 3. Middle Row: 3 Charts matching Mockup -->
+<div class="row g-3 mb-4">
+    <!-- Chart 1: Monthly Sales Line Chart -->
+    <div class="col-12 col-xl-5">
+        <div class="dashboard-card">
+            <div class="card-head">
+                <h6><i class="bi bi-graph-up text-primary ms-2"></i>المبيعات الشهرية الفعلية</h6>
+                <span class="badge bg-light text-primary border small">آخر 6 أشهر</span>
+            </div>
+            <div class="chart-wrapper-box">
+                <canvas id="monthlySalesChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart 2: Brand Sales Distribution (Donut) -->
+    <div class="col-12 col-md-6 col-xl-4">
+        <div class="dashboard-card">
+            <div class="card-head">
+                <h6><i class="bi bi-pie-chart-fill text-info ms-2"></i>مبيعات الهواتف حسب الماركة</h6>
+                <span class="badge bg-light text-muted border small">البيانات الفعلية</span>
+            </div>
+            <div class="row align-items-center">
+                <div class="col-7 position-relative">
+                    <div style="height: 220px; position: relative;">
+                        @if (Model.TopBrandsSales.Any())
+                        {
+                            <canvas id="categoryDonutChart"></canvas>
+                            <!-- Center text over donut -->
+                            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none;">
+                                <div style="font-size: 0.72rem; color: #64748b; font-weight: 700;">المباع</div>
+                                <div style="font-size: 1.05rem; font-weight: 900; color: #0f172a; line-height: 1.1;">@Model.TopBrandsSales.Sum(b => b.QuantitySold)</div>
+                                <div style="font-size: 0.7rem; color: #64748b;">جهاز</div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="h-100 d-flex flex-column align-items-center justify-content-center text-muted small p-3 text-center">
+                                <i class="bi bi-pie-chart fs-1 opacity-50 mb-2"></i>
+                                <span>لا توجد مبيعات هواتف مسجلة بعد</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+                <div class="col-5 ps-0">
+                    <div class="category-legend-list">
+                        @if (Model.TopBrandsSales.Any())
+                        {
+                            foreach (var b in Model.TopBrandsSales)
+                            {
+                                <div class="category-legend-item">
+                                    <span class="text-truncate" title="@b.BrandName"><span class="color-dot" style="background: @b.Color;"></span> @b.BrandName</span>
+                                    <span class="fw-bold">@b.Percentage%</span>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="small text-muted py-3 text-center">في انتظار تسجيل مبيعات</div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart 3: Top Selling Products (Horizontal Bars) -->
+    <div class="col-12 col-md-6 col-xl-3">
+        <div class="dashboard-card">
+            <div class="card-head">
+                <h6><i class="bi bi-bar-chart-steps text-success ms-2"></i>أكثر المنتجات مبيعاً</h6>
+                <span class="badge bg-light text-muted border small">الترتيب الفعلي</span>
+            </div>
+            <div class="chart-wrapper-box">
+                @if (Model.TopSellingProducts.Any())
+                {
+                    <canvas id="topSellingBarChart"></canvas>
+                }
+                else
+                {
+                    <div class="h-100 d-flex flex-column align-items-center justify-content-center text-muted small p-3 text-center">
+                        <i class="bi bi-box-seam fs-1 opacity-50 mb-2"></i>
+                        <span>لا توجد مبيعات أصناف مسجلة بعد</span>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@{
+    var recentSalesList = ViewBag.RecentSales as List<Doctor.Web.Models.Entities.Sale> ?? new();
+    var lowStockList = ViewBag.LowStockAlerts as List<Doctor.Web.Models.Entities.Product> ?? new();
+}
+
+<!-- 4. Bottom Row: Recent Sales & Inventory Alerts -->
+<div class="row g-3 mb-4">
+    <!-- Section 1: Recent Invoices Table (Expanded to 8 Cols) -->
+    <div class="col-12 col-lg-8">
+        <div class="dashboard-card h-100">
+            <div class="card-head">
+                <h6><i class="bi bi-receipt text-primary ms-2"></i>أحدث فواتير المبيعات</h6>
+                <div class="d-flex gap-2">
+                    <a href="@Url.Action("Pos", "Sales")" class="btn btn-sm btn-primary py-1 px-3 fw-bold">
+                        <i class="bi bi-plus-circle ms-1"></i> فاتورة بيع جديدة
+                    </a>
+                    <a href="@Url.Action("Invoices", "Sales")" class="btn btn-sm btn-light border py-1 px-2 small fw-bold">عرض الكل</a>
+                </div>
+            </div>
+            <div class="table-responsive">
+                @if (recentSalesList.Any())
+                {
+                    <table class="table table-hover align-middle mb-0 small">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>رقم الفاتورة</th>
+                                <th>العميل</th>
+                                <th>المبلغ الإجمالي</th>
+                                <th>طريقة الدفع</th>
+                                <th>التاريخ</th>
+                                <th>إجراء</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{ int index = 1; }
+                            @foreach (var sale in recentSalesList)
+                            {
+                                <tr>
+                                    <td class="text-muted">@(index++)</td>
+                                    <td><strong class="text-primary font-monospace">@sale.InvoiceNumber</strong></td>
+                                    <td>@(sale.Customer?.Name ?? "عميل نقدي")</td>
+                                    <td class="fw-bold">@sale.TotalAmount.ToString("N0") ج.م</td>
+                                    <td><span class="badge bg-light text-dark border">@sale.PaymentMethod</span></td>
+                                    <td class="text-muted" style="font-size: 0.75rem;">@sale.CreatedAt.ToString("yyyy/MM/dd HH:mm")</td>
+                                    <td>
+                                        <a href="@Url.Action("Invoice", "Sales", new { id = sale.Id })" class="btn btn-sm btn-outline-primary py-0 px-2" title="عرض الفاتورة والطباعة">
+                                            <i class="bi bi-printer"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <div class="p-5 text-center text-muted">
+                        <i class="bi bi-receipt-cutoff fs-1 text-secondary opacity-50 d-block mb-2"></i>
+                        <div class="fw-bold fs-6 mb-1 text-dark">سجل المبيعات مصفّر ومفرّغ حالياً (0 جنيه)</div>
+                        <p class="small text-muted mb-3">لا توجد فواتير سابقة. يمكنك البدء الآن بتسجيل أول عملية بيع حقيقية.</p>
+                        <a href="@Url.Action("Pos", "Sales")" class="btn btn-sm btn-primary px-4 py-2 fw-bold">
+                            <i class="bi bi-calculator ms-1"></i> فتح شاشة الكاشير (POS)
+                        </a>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 2: Low Stock Alerts (Expanded to 4 Cols) -->
+    <div class="col-12 col-lg-4">
+        <div class="dashboard-card h-100">
+            <div class="card-head">
+                <h6><i class="bi bi-bell-fill text-danger ms-2"></i>نواقص المخزون والأجهزة</h6>
+                <a href="@Url.Action("Products", "Sales")" class="btn btn-sm btn-light border py-1 px-2 small fw-bold">المخزون</a>
+            </div>
+            <div>
+                @if (lowStockList.Any())
+                {
+                    @foreach (var p in lowStockList)
+                    {
+                        <div class="alert-card-item">
+                            <div class="alert-icon bg-danger-subtle text-danger">
+                                <i class="bi bi-exclamation-triangle-fill"></i>
+                            </div>
+                            <div class="alert-text">
+                                <div class="alert-title">@p.Name</div>
+                                <div class="alert-desc text-danger fw-bold">المتبقي: @p.StockQuantity قطعة (الحد الأدنى: @p.MinStockLevel)</div>
+                            </div>
+                            <a href="@Url.Action("Products", "Sales", new { search = p.Barcode })" class="btn btn-sm btn-outline-danger py-0 px-2 small">
+                                <i class="bi bi-arrow-left"></i>
+                            </a>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="p-4 text-center text-muted">
+                        <i class="bi bi-check-circle-fill fs-2 text-success opacity-75 d-block mb-2"></i>
+                        <div class="fw-bold small text-dark">المخزون مستقر تماماً</div>
+                        <p class="small text-muted mb-0">جميع الأجهزة فوق الحد الأدنى للأمان</p>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 4. Admin Profile Management (Password & Email & Full Name) -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-8 mx-auto">
+        <div class="dashboard-table-card p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-shield-lock-fill ms-2 text-warning"></i>بيانات حساب المدير العام (البريد وكلمة المرور)
+                </h5>
+                <span class="badge bg-primary-subtle text-primary fw-bold px-3 py-2 rounded-pill">المدير العام (Admin)</span>
+            </div>
+            <p class="text-muted small mb-3">تعديل اسم المستخدم، البريد الإلكتروني، وتغيير كلمة مرور حساب الإدارة الرئيسي.</p>
+
+            <form asp-controller="Admin" asp-action="UpdateAdminProfile" method="post">
+                @Html.AntiForgeryToken()
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">الاسم الكامل</label>
+                        <input type="text" name="fullName" class="form-control" value="@(ViewBag.AdminFullName ?? User.FindFirst("FullName")?.Value ?? "أحمد محمد")" required />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">اسم المستخدم (Username)</label>
+                        <input type="text" name="username" class="form-control font-monospace" value="@(ViewBag.AdminUsername ?? User.Identity?.Name ?? "admin")" required />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold small">البريد الإلكتروني (Email)</label>
+                        <input type="email" name="email" class="form-control font-monospace" placeholder="admin@doctorcenter.com" value="@(ViewBag.AdminEmail ?? "admin@doctor.com")" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">كلمة المرور الحالية (عند التغيير)</label>
+                        <input type="password" name="currentPassword" class="form-control" placeholder="أدخل الحالية إذا أردت التغيير" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">كلمة المرور الجديدة</label>
+                        <input type="password" name="newPassword" class="form-control" placeholder="أدخل الجديدة أو اتركها فارغة" />
+                    </div>
+                    <div class="col-12 pt-2">
+                        <button type="submit" class="btn btn-warning text-dark w-100 py-2 fw-bold d-flex align-items-center justify-content-center gap-2">
+                            <i class="bi bi-save2-fill fs-5"></i>
+                            <span>حفظ وتحديث بيانات المدير</span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <hr class="my-4" />
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <h6 class="fw-bold text-danger mb-1"><i class="bi bi-trash3-fill ms-1"></i>تصفير وتفريغ كافة سجلات المبيعات</h6>
+                    <p class="text-muted small mb-0">مسح وتصفير إجمالي المبيعات، الفواتير، والمدفوعات إلى (0 جنيه) للبدء من جديد.</p>
+                </div>
+                <form asp-controller="Admin" asp-action="ResetSales" method="post" onsubmit="return confirm('تنبيه مؤكد:\n\nهل أنت متاكد تماماً من تصفير كافة الفواتير وسجلات المبيعات والمدفوعات من قاعدة البيانات؟');">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-danger btn-sm px-3 py-2 fw-bold d-flex align-items-center gap-1">
+                        <i class="bi bi-trash-fill fs-6"></i>
+                        <span>تصفير المبيعات الآن</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // 1. Real Monthly Sales Line Chart (From actual DB)
+        const salesCtx = document.getElementById('monthlySalesChart');
+        if (salesCtx) {
+            const monthlyLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MonthlySales.Select(m => m.MonthName)));
+            const monthlyData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MonthlySales.Select(m => m.Total)));
+
+            const gradient = salesCtx.getContext('2d').createLinearGradient(0, 0, 0, 240);
+            gradient.addColorStop(0, 'rgba(2, 132, 199, 0.35)');
+            gradient.addColorStop(1, 'rgba(2, 132, 199, 0.0)');
+
+            new Chart(salesCtx, {
+                type: 'line',
+                data: {
+                    labels: monthlyLabels.length ? monthlyLabels : ['لا توجد بيانات'],
+                    datasets: [{
+                        label: 'المبيعات الفعلية',
+                        data: monthlyData.length ? monthlyData : [0],
+                        borderColor: '#0284c7',
+                        borderWidth: 3,
+                        backgroundColor: gradient,
+                        fill: true,
+                        tension: 0.35,
+                        pointBackgroundColor: '#0284c7',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function (ctx) {
+                                    return ' ' + ctx.raw.toLocaleString() + ' جنيه';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#f1f5f9' },
+                            ticks: {
+                                callback: function (value) {
+                                    return value.toLocaleString();
+                                }
+                            }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 2. Real Brand Sales Distribution (Donut Chart from actual DB)
+        const donutCtx = document.getElementById('categoryDonutChart');
+        if (donutCtx) {
+            const brandLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.TopBrandsSales.Select(b => b.BrandName)));
+            const brandData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.TopBrandsSales.Select(b => b.QuantitySold)));
+            const brandColors = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.TopBrandsSales.Select(b => b.Color)));
+
+            if (brandLabels && brandLabels.length > 0) {
+                new Chart(donutCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: brandLabels,
+                        datasets: [{
+                            data: brandData,
+                            backgroundColor: brandColors,
+                            borderWidth: 2,
+                            borderColor: '#ffffff',
+                            hoverOffset: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '72%',
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (ctx) {
+                                        return ' ' + ctx.label + ': ' + ctx.raw + ' جهاز مباع';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // 3. Real Top Selling Products (Horizontal Bar Chart from actual DB)
+        const barCtx = document.getElementById('topSellingBarChart');
+        if (barCtx) {
+            const topLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.TopSellingProducts.Select(p => p.ProductName)));
+            const topData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.TopSellingProducts.Select(p => p.QuantitySold)));
+            const barColors = ['#0284c7', '#0ea5e9', '#10b981', '#14b8a6', '#06b6d4', '#8b5cf6'];
+
+            if (topLabels && topLabels.length > 0) {
+                new Chart(barCtx, {
+                    type: 'bar',
+                    indexAxis: 'y',
+                    data: {
+                        labels: topLabels,
+                        datasets: [{
+                            data: topData,
+                            backgroundColor: barColors.slice(0, topLabels.length),
+                            borderRadius: 6,
+                            barThickness: 16
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (ctx) {
+                                        return ' المباع: ' + ctx.raw + ' قطعة';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                beginAtZero: true,
+                                grid: { color: '#f1f5f9' },
+                                ticks: {
+                                    stepSize: 1,
+                                    precision: 0
+                                }
+                            },
+                            y: {
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+    });
+</script>
+}

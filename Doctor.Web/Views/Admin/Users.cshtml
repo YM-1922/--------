@@ -1,0 +1,205 @@
+@model List<Doctor.Web.Models.Entities.User>
+@{
+    ViewData["Title"] = "إدارة المستخدمين";
+    var roles = ViewBag.Roles as List<Doctor.Web.Models.Entities.UserRole> ?? new();
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h3 class="fw-bold mb-1"><i class="bi bi-people-fill text-primary ms-2"></i>إدارة المستخدمين</h3>
+        <p class="text-muted small mb-0">إضافة وتعديل حسابات الموظفين وتعيين الأدوار وكلمات المرور</p>
+    </div>
+    <button type="button" class="btn btn-primary btn-sm d-flex align-items-center gap-1 shadow-sm" data-bs-toggle="modal" data-bs-target="#createUserModal">
+        <i class="bi bi-person-plus-fill"></i> إضافة مستخدم جديد
+    </button>
+</div>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>المستخدم</th>
+                    <th>الدور / الصلاحية</th>
+                    <th>بيانات الاتصال</th>
+                    <th>الحالة</th>
+                    <th>تاريخ الإنشاء</th>
+                    <th>آخر تسجيل دخول</th>
+                    <th>الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var user in Model)
+                {
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="rounded-circle bg-primary-subtle text-primary fw-bold d-flex align-items-center justify-content-center ms-2" style="width: 38px; height: 38px;">
+                                    @user.FullName.FirstOrDefault()
+                                </div>
+                                <div>
+                                    <div class="fw-bold text-dark">@user.FullName</div>
+                                    <small class="text-muted">@@@user.Username</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            @{
+                                string roleBadge = user.Role.Name switch
+                                {
+                                    "Admin" => "bg-danger",
+                                    "Sales" => "bg-primary",
+                                    "Maintenance" => "bg-success",
+                                    _ => "bg-secondary"
+                                };
+                            }
+                            <span class="badge @roleBadge fs-6 py-1 px-2">@user.Role.NameAr</span>
+                        </td>
+                        <td>
+                            <div><i class="bi bi-telephone text-muted ms-1"></i>@(user.PhoneNumber ?? "غير محدد")</div>
+                            @if (!string.IsNullOrEmpty(user.Email))
+                            {
+                                <small class="text-muted"><i class="bi bi-envelope ms-1"></i>@user.Email</small>
+                            }
+                        </td>
+                        <td>
+                            @if (user.Status == Doctor.Web.Models.Entities.UserStatus.Active)
+                            {
+                                <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">نشط</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">معطل</span>
+                            }
+                        </td>
+                        <td>@user.CreatedAt.ToString("yyyy/MM/dd")</td>
+                        <td>
+                            @if (user.LastLoginAt.HasValue)
+                            {
+                                <span>@user.LastLoginAt.Value.ToString("yyyy/MM/dd HH:mm")</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">لم يدخل بعد</span>
+                            }
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editUserModal_@user.Id" title="تعديل">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+                                @if (user.Username.ToLower() != "admin")
+                                {
+                                    <form asp-action="ToggleUserStatus" method="post" class="d-inline" onsubmit="return confirm('هل أنت متأكد من تغيير حالة هذا الحساب؟')">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@user.Id" />
+                                        <button type="submit" class="btn @(user.Status == Doctor.Web.Models.Entities.UserStatus.Active ? "btn-outline-danger" : "btn-outline-success")" title="@(user.Status == Doctor.Web.Models.Entities.UserStatus.Active ? "تعطيل الحساب" : "تنشيط الحساب")">
+                                            <i class="bi @(user.Status == Doctor.Web.Models.Entities.UserStatus.Active ? "bi-person-x" : "bi-person-check")"></i>
+                                        </button>
+                                    </form>
+                                }
+                            </div>
+
+                            <!-- Edit Modal for this user -->
+                            <div class="modal fade" id="editUserModal_@user.Id" tabindex="-1" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <form asp-action="EditUser" method="post">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@user.Id" />
+                                            <div class="modal-header bg-light">
+                                                <h5 class="modal-title fs-6 fw-bold">تعديل بيانات المستخدم: @user.FullName</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="mb-3">
+                                                    <label class="form-label small fw-bold">الاسم الكامل</label>
+                                                    <input type="text" name="fullName" class="form-control" value="@user.FullName" required />
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label small fw-bold">الدور الوظيفي</label>
+                                                    <select name="roleId" class="form-select" required>
+                                                        @foreach (var r in roles)
+                                                        {
+                                                            <!option value="@r.Id" @(r.Id == user.RoleId ? "selected" : "")>@r.NameAr (@r.Name)</!option>
+                                                        }
+                                                    </select>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label small fw-bold">رقم الهاتف</label>
+                                                    <input type="text" name="phoneNumber" class="form-control" value="@user.PhoneNumber" />
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label small fw-bold">البريد الإلكتروني</label>
+                                                    <input type="email" name="email" class="form-control" value="@user.Email" />
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label small fw-bold">تغيير كلمة المرور (اتركها فارغة إذا لم ترد التغيير)</label>
+                                                    <input type="password" name="newPassword" class="form-control" placeholder="كلمة المرور الجديدة" />
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer bg-light">
+                                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">إلغاء</button>
+                                                <button type="submit" class="btn btn-primary btn-sm">حفظ التغييرات</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Create User Modal -->
+<div class="modal fade" id="createUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="CreateUser" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title fs-6 fw-bold"><i class="bi bi-person-plus ms-1"></i> إضافة مستخدم جديد</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">اسم المستخدم (Login Username)</label>
+                        <input type="text" name="username" class="form-control" placeholder="مثال: ahmed_sales" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">الاسم الكامل</label>
+                        <input type="text" name="fullName" class="form-control" placeholder="مثال: أحمد مصطفى" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">كلمة المرور</label>
+                        <input type="password" name="password" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">الدور الوظيفي</label>
+                        <select name="roleId" class="form-select" required>
+                            @foreach (var r in roles)
+                            {
+                                <option value="@r.Id">@r.NameAr (@r.Name)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">رقم الهاتف</label>
+                        <input type="text" name="phoneNumber" class="form-control" placeholder="010xxxxxxxx" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">البريد الإلكتروني</label>
+                        <input type="email" name="email" class="form-control" placeholder="user@center.com" />
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-primary btn-sm">حفظ وإنشاء الحساب</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
