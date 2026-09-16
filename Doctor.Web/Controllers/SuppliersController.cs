@@ -1,5 +1,6 @@
 using Doctor.Web.Data;
 using Doctor.Web.Models.Entities;
+using Doctor.Web.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -128,6 +129,10 @@ public class SuppliersController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Supply(
         int supplierId,
+        string? itemsJson,
+        decimal paidAmount,
+        PaymentMethod paymentMethod,
+        string? notes,
         string? supplyTypeRadio,
         int? productId,
         string? newDeviceName,
@@ -139,9 +144,6 @@ public class SuppliersController : Controller
         decimal costPrice,
         decimal sellingPrice,
         int quantity,
-        decimal paidAmount,
-        PaymentMethod paymentMethod,
-        string? notes,
         IFormFile? imageFile)
     {
         try
@@ -149,160 +151,168 @@ public class SuppliersController : Controller
             var supplier = await _context.Suppliers.FindAsync(supplierId);
             if (supplier == null) return NotFound("المورد غير موجود.");
 
-            if (quantity <= 0)
-            {
-                TempData["Error"] = "يجب تحديد كمية توريد صحيحة أكبر من صفر.";
-                return RedirectToAction(nameof(Details), new { id = supplierId });
-            }
-
-            if (costPrice <= 0)
-            {
-                TempData["Error"] = "يجب تحديد سعر شراء / تكلفة صحيح.";
-                return RedirectToAction(nameof(Details), new { id = supplierId });
-            }
-
             int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out int userId);
-            Product product;
 
-            // If user selected "new", ignore any productId
-            if (supplyTypeRadio == "new")
+            List<SupplyOrderItemDto> items = new();
+            if (!string.IsNullOrWhiteSpace(itemsJson))
             {
-                productId = null;
-            }
-
-            // Either attach to existing device or create a new one
-            if (productId.HasValue && productId.Value > 0)
-            {
-                var existing = await _context.Products.FindAsync(productId.Value);
-                if (existing == null)
+                try
                 {
-                    TempData["Error"] = "الجهاز المحدد غير موجود.";
-                    return RedirectToAction(nameof(Details), new { id = supplierId });
-                }
-                product = existing;
-                int beforeStock = product.StockQuantity;
-                product.StockQuantity += quantity;
-
-                // Calculate average purchase price: (old + new) / 2
-                decimal oldPurchasePrice = product.PurchasePrice;
-                if (oldPurchasePrice > 0)
-                {
-                    product.PurchasePrice = Math.Round((oldPurchasePrice + costPrice) / 2m, 2);
-                }
-                else
-                {
-                    product.PurchasePrice = costPrice;
-                }
-
-                if (sellingPrice > 0)
-                {
-                    product.SellingPrice = sellingPrice;
-                }
-
-                _context.InventoryTransactions.Add(new InventoryTransaction
-                {
-                    ProductId = product.Id,
-                    TransactionType = InventoryTransactionType.Purchase,
-                    Quantity = quantity,
-                    QuantityBefore = beforeStock,
-                    QuantityAfter = product.StockQuantity,
-                    UserId = userId > 0 ? userId : null,
-                    Notes = $"توريد من المورد {supplier.Name} (متوسط سعر الشراء: {product.PurchasePrice:N2} ج.م)",
-                    CreatedAt = DateTime.Now
-                });
-            }
-            else
-            {
-                if (string.IsNullOrWhiteSpace(newDeviceName))
-                {
-                    TempData["Error"] = "يرجى كتابة اسم الجهاز عند إنشاء جهاز جديد للتوريد.";
-                    return RedirectToAction(nameof(Details), new { id = supplierId });
-                }
-
-                string? imageUrl = null;
-                if (imageFile != null && imageFile.Length > 0)
-                {
-                    var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "products");
-                    if (!Directory.Exists(uploadsFolder))
+                    items = System.Text.Json.JsonSerializer.Deserialize<List<SupplyOrderItemDto>>(itemsJson, new System.Text.Json.JsonSerializerOptions
                     {
-                        Directory.CreateDirectory(uploadsFolder);
-                    }
-                    var fileName = Guid.NewGuid().ToString("N") + Path.GetExtension(imageFile.FileName);
-                    var filePath = Path.Combine(uploadsFolder, fileName);
-                    using (var stream = new FileStream(filePath, FileMode.Create))
-                    {
-                        await imageFile.CopyToAsync(stream);
-                    }
-                    imageUrl = "/uploads/products/" + fileName;
+                        PropertyNameCaseInsensitive = true
+                    }) ?? new();
                 }
-
-                var defaultCat = await _context.ProductCategories.FirstOrDefaultAsync();
-
-                product = new Product
-                {
-                    Name = newDeviceName.Trim(),
-                    BrandId = (brandId.HasValue && brandId.Value > 0) ? brandId : null,
-                    ProductCategoryId = defaultCat?.Id,
-                    Storage = storage?.Trim(),
-                    Ram = ram?.Trim(),
-                    Color = color?.Trim(),
-                    SerialNumberOrImei = imei?.Trim(),
-                    PurchasePrice = costPrice,
-                    SellingPrice = sellingPrice > 0 ? sellingPrice : Math.Round(costPrice * 1.15m, 2),
-                    StockQuantity = quantity,
-                    MinStockLevel = 1,
-                    ProductType = ProductType.Device,
-                    Barcode = DateTime.Now.Ticks.ToString()[^12..],
-                    ImageUrl = imageUrl,
-                    IsActive = true,
-                    CreatedAt = DateTime.Now
-                };
-
-                _context.Products.Add(product);
-                await _context.SaveChangesAsync();
-
-                _context.InventoryTransactions.Add(new InventoryTransaction
-                {
-                    ProductId = product.Id,
-                    TransactionType = InventoryTransactionType.Purchase,
-                    Quantity = quantity,
-                    QuantityBefore = 0,
-                    QuantityAfter = quantity,
-                    UserId = userId > 0 ? userId : null,
-                    Notes = $"توريد جهاز جديد من المورد {supplier.Name}",
-                    CreatedAt = DateTime.Now
-                });
+                catch { }
             }
 
-            decimal totalAmount = costPrice * quantity;
-            decimal actualPaid = Math.Clamp(paidAmount, 0, totalAmount);
-            decimal remaining = totalAmount - actualPaid;
+            // Fallback for single item submission
+            if (!items.Any())
+            {
+                if (quantity > 0 && costPrice > 0)
+                {
+                    items.Add(new SupplyOrderItemDto
+                    {
+                        ProductId = (supplyTypeRadio == "new") ? null : productId,
+                        Name = newDeviceName ?? "",
+                        BrandId = brandId,
+                        Storage = storage,
+                        Ram = ram,
+                        Color = color,
+                        Imei = imei,
+                        Quantity = quantity,
+                        CostPrice = costPrice,
+                        SellingPrice = sellingPrice,
+                        IsNew = (supplyTypeRadio == "new" || !productId.HasValue || productId <= 0)
+                    });
+                }
+            }
+
+            if (!items.Any())
+            {
+                TempData["Error"] = "يجب إضافة جهاز واحد على الأقل إلى فاتورة التوريد.";
+                return RedirectToAction(nameof(Details), new { id = supplierId });
+            }
+
+            var defaultCat = await _context.ProductCategories.FirstOrDefaultAsync();
 
             var supplyOrder = new SupplyOrder
             {
                 SupplierId = supplierId,
                 OrderNumber = "ORD-" + DateTime.Now.ToString("yyyyMMddHHmmss"),
                 UserId = userId > 0 ? userId : null,
-                TotalAmount = totalAmount,
-                PaidAmount = actualPaid,
-                RemainingAmount = remaining,
                 Notes = notes,
                 CreatedAt = DateTime.Now
             };
 
+            decimal totalAmount = 0;
+
+            foreach (var itemDto in items)
+            {
+                if (itemDto.Quantity <= 0 || itemDto.CostPrice <= 0) continue;
+
+                Product product;
+                if (!itemDto.IsNew && itemDto.ProductId.HasValue && itemDto.ProductId.Value > 0)
+                {
+                    var existing = await _context.Products.FindAsync(itemDto.ProductId.Value);
+                    if (existing == null) continue;
+                    product = existing;
+                    int beforeStock = product.StockQuantity;
+                    product.StockQuantity += itemDto.Quantity;
+
+                    decimal oldPurchasePrice = product.PurchasePrice;
+                    if (oldPurchasePrice > 0)
+                    {
+                        product.PurchasePrice = Math.Round((oldPurchasePrice + itemDto.CostPrice) / 2m, 2);
+                    }
+                    else
+                    {
+                        product.PurchasePrice = itemDto.CostPrice;
+                    }
+
+                    if (itemDto.SellingPrice > 0)
+                    {
+                        product.SellingPrice = itemDto.SellingPrice;
+                    }
+
+                    _context.InventoryTransactions.Add(new InventoryTransaction
+                    {
+                        ProductId = product.Id,
+                        TransactionType = InventoryTransactionType.Purchase,
+                        Quantity = itemDto.Quantity,
+                        QuantityBefore = beforeStock,
+                        QuantityAfter = product.StockQuantity,
+                        UserId = userId > 0 ? userId : null,
+                        Notes = $"توريد من المورد {supplier.Name} بالفاتورة ({supplyOrder.OrderNumber})",
+                        CreatedAt = DateTime.Now
+                    });
+                }
+                else
+                {
+                    string devName = !string.IsNullOrWhiteSpace(itemDto.Name) ? itemDto.Name.Trim() : "جهاز جديد";
+                    product = new Product
+                    {
+                        Name = devName,
+                        BrandId = (itemDto.BrandId.HasValue && itemDto.BrandId.Value > 0) ? itemDto.BrandId : null,
+                        ProductCategoryId = defaultCat?.Id,
+                        Storage = itemDto.Storage?.Trim(),
+                        Ram = itemDto.Ram?.Trim(),
+                        Color = itemDto.Color?.Trim(),
+                        SerialNumberOrImei = itemDto.Imei?.Trim(),
+                        PurchasePrice = itemDto.CostPrice,
+                        SellingPrice = itemDto.SellingPrice > 0 ? itemDto.SellingPrice : Math.Round(itemDto.CostPrice * 1.15m, 2),
+                        StockQuantity = itemDto.Quantity,
+                        MinStockLevel = 1,
+                        ProductType = ProductType.Device,
+                        Barcode = DateTime.Now.Ticks.ToString()[^12..],
+                        IsActive = true,
+                        CreatedAt = DateTime.Now
+                    };
+
+                    _context.Products.Add(product);
+                    await _context.SaveChangesAsync();
+
+                    _context.InventoryTransactions.Add(new InventoryTransaction
+                    {
+                        ProductId = product.Id,
+                        TransactionType = InventoryTransactionType.Purchase,
+                        Quantity = itemDto.Quantity,
+                        QuantityBefore = 0,
+                        QuantityAfter = itemDto.Quantity,
+                        UserId = userId > 0 ? userId : null,
+                        Notes = $"توريد جهاز جديد من المورد {supplier.Name} بالفاتورة ({supplyOrder.OrderNumber})",
+                        CreatedAt = DateTime.Now
+                    });
+                }
+
+                decimal itemTotal = itemDto.CostPrice * itemDto.Quantity;
+                totalAmount += itemTotal;
+
+                supplyOrder.Items.Add(new SupplyOrderItem
+                {
+                    ProductId = product.Id,
+                    Quantity = itemDto.Quantity,
+                    CostPrice = itemDto.CostPrice,
+                    SellingPrice = product.SellingPrice,
+                    TotalPrice = itemTotal
+                });
+            }
+
+            if (!supplyOrder.Items.Any())
+            {
+                TempData["Error"] = "لم يتم تحديد أي أجهزة صالحة للتوريد.";
+                return RedirectToAction(nameof(Details), new { id = supplierId });
+            }
+
+            decimal actualPaid = Math.Clamp(paidAmount, 0, totalAmount);
+            decimal remaining = totalAmount - actualPaid;
+
+            supplyOrder.TotalAmount = totalAmount;
+            supplyOrder.PaidAmount = actualPaid;
+            supplyOrder.RemainingAmount = remaining;
+
             _context.SupplyOrders.Add(supplyOrder);
             await _context.SaveChangesAsync();
-
-            var orderItem = new SupplyOrderItem
-            {
-                SupplyOrderId = supplyOrder.Id,
-                ProductId = product.Id,
-                Quantity = quantity,
-                CostPrice = costPrice,
-                SellingPrice = product.SellingPrice,
-                TotalPrice = totalAmount
-            };
-            _context.SupplyOrderItems.Add(orderItem);
 
             // If paid immediately, record payment
             if (actualPaid > 0)
@@ -318,11 +328,11 @@ public class SuppliersController : Controller
                     CreatedAt = DateTime.Now
                 };
                 _context.SupplierPayments.Add(payment);
+                await _context.SaveChangesAsync();
             }
 
-            await _context.SaveChangesAsync();
-
-            TempData["Success"] = $"تم تسجيل عملية التوريد بنجاح! تم إضافة {quantity} جهاز إلى المخزون وتحديث حساب المورد.";
+            int totalQty = supplyOrder.Items.Sum(i => i.Quantity);
+            TempData["Success"] = $"تم تسجيل فاتورة التوريد ({supplyOrder.OrderNumber}) بنجاح! تم إضافة {totalQty} جهاز عبر {supplyOrder.Items.Count} صنف وتحديث رصيد المخزن وحساب المورد.";
             return RedirectToAction(nameof(Details), new { id = supplierId });
         }
         catch (Exception ex)

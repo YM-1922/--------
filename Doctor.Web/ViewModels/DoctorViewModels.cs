@@ -251,3 +251,19 @@ public class SlowMovingDevicePoint
     public int CurrentStock { get; set; }
     public decimal SellingPrice { get; set; }
 }
+
+public class SupplyOrderItemDto
+{
+    public int? ProductId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Storage { get; set; }
+    public string? Ram { get; set; }
+    public string? Color { get; set; }
+    public string? Imei { get; set; }
+    public int? BrandId { get; set; }
+    public int Quantity { get; set; } = 1;
+    public decimal CostPrice { get; set; }
+    public decimal SellingPrice { get; set; }
+    public decimal TotalPrice => Quantity * CostPrice;
+    public bool IsNew { get; set; }
+}
