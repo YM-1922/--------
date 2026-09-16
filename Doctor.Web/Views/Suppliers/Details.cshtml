@@ -287,214 +287,224 @@
     </div>
 </div>
 
-<!-- Modal: Supply Devices (Multi-item Invoice) -->
+<!-- Modal: Supply Devices (Single or Multi-item Invoice) -->
 <div class="modal fade" id="supplyModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content border-0 shadow">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <form class="modal-content border-0 shadow" asp-action="Supply" method="post" id="supplyOrderForm" onsubmit="return handleSupplyFormSubmit(event)">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="supplierId" value="@Model.Id" />
+            <input type="hidden" name="itemsJson" id="supplyItemsJson" value="[]" />
+
+            <!-- Header -->
             <div class="modal-header bg-success text-white py-3">
-                <h5 class="modal-title fw-bold">
-                    <i class="bi bi-box-seam ms-2"></i>فاتورة توريد أجهزة جديدة للمخزون من (@Model.Name)
+                <h5 class="modal-title fw-bold mb-0">
+                    <i class="bi bi-box-seam-fill ms-2"></i>فاتورة توريد أجهزة جديدة للمخزون - المورد: (@Model.Name)
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form asp-action="Supply" method="post" id="supplyOrderForm">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="supplierId" value="@Model.Id" />
-                <input type="hidden" name="itemsJson" id="supplyItemsJson" value="[]" />
 
-                <div class="modal-body p-3 p-md-4">
-                    <div class="alert alert-light border small mb-3 d-flex align-items-center gap-2">
-                        <i class="bi bi-info-circle text-primary fs-5"></i>
-                        <span>يمكنك إضافة عدة أجهزة في نفس الفاتورة. ابحث عن الجهاز واختره أو أدخل جهازاً جديداً، وحدد الكمية وسعر الشراء ثم اضغط <strong>(إضافة للفاتورة)</strong>.</span>
-                    </div>
+            <!-- Scrollable Body -->
+            <div class="modal-body p-3 p-md-4" style="max-height: 70vh; overflow-y: auto;">
+                <div class="alert alert-primary bg-primary-subtle border-primary-subtle small mb-3 d-flex align-items-center gap-2">
+                    <i class="bi bi-info-circle-fill text-primary fs-5"></i>
+                    <span>
+                        يمكنك اختيار الجهاز وتحديد الكمية وسعر الشراء ثم الضغط على <strong>حفظ وتأكيد فاتورة التوريد</strong> مباشرة، أو الضغط على <strong>(إضافة جهاز آخر للفاتورة)</strong> لإدراج عدة أجهزة مختلفة في نفس الفاتورة.
+                    </span>
+                </div>
 
-                    <!-- Step 1: Add Device Section -->
-                    <div class="card border-primary border-opacity-25 bg-light-subtle mb-4">
-                        <div class="card-header bg-primary text-white py-2 d-flex justify-content-between align-items-center">
-                            <span class="fw-bold small"><i class="bi bi-plus-circle ms-1"></i> إضافة جهاز إلى الفاتورة</span>
-                            <div class="d-flex gap-3 small">
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="form-check-input" type="radio" name="supplyTypeRadio" id="supplyExistingRadio" value="existing" checked onchange="toggleSupplyType()">
-                                    <label class="form-check-label text-white" for="supplyExistingRadio">جهاز موجود بالمحل</label>
-                                </div>
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="form-check-input" type="radio" name="supplyTypeRadio" id="supplyNewRadio" value="new" onchange="toggleSupplyType()">
-                                    <label class="form-check-label text-white" for="supplyNewRadio">جهاز أو موديل جديد</label>
-                                </div>
+                <!-- Step 1: Device Selection Card -->
+                <div class="card border border-primary border-opacity-25 shadow-sm mb-3">
+                    <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <span class="fw-bold small text-dark"><i class="bi bi-phone ms-1 text-primary"></i> بيانات الجهاز</span>
+                        <div class="d-flex gap-3 small">
+                            <div class="form-check form-check-inline m-0">
+                                <input class="form-check-input" type="radio" name="supplyTypeRadio" id="supplyExistingRadio" value="existing" checked onchange="toggleSupplyType()">
+                                <label class="form-check-label fw-bold text-dark" for="supplyExistingRadio">جهاز موجود بالمحل</label>
+                            </div>
+                            <div class="form-check form-check-inline m-0">
+                                <input class="form-check-input" type="radio" name="supplyTypeRadio" id="supplyNewRadio" value="new" onchange="toggleSupplyType()">
+                                <label class="form-check-label fw-bold text-dark" for="supplyNewRadio">جهاز أو موديل جديد</label>
                             </div>
                         </div>
-                        <div class="card-body p-3">
-                            <!-- Existing Device Section with Live Search -->
-                            <div id="existingProductSection" class="mb-3 position-relative">
-                                <label class="form-label small fw-bold">ابحث بالاسم أو الموديل عن جهاز موجود <span class="text-danger">*</span></label>
-                                <div class="input-group">
-                                    <span class="input-group-text bg-white"><i class="bi bi-search text-primary"></i></span>
-                                    <input type="text" id="supplySearchInput" class="form-control" placeholder="اكتب اسم الجهاز أو الموديل للبحث الفوري..." autocomplete="off" oninput="filterSupplyDevices(this.value)" onfocus="showSupplyDeviceDropdown()" />
-                                    <button type="button" class="btn btn-outline-secondary" onclick="clearSupplyDeviceSearch()" title="مسح">
-                                        <i class="bi bi-x-lg"></i>
+                    </div>
+                    <div class="card-body p-3">
+                        <!-- Existing Device with Search & Dropdown -->
+                        <div id="existingProductSection" class="mb-3 position-relative">
+                            <label class="form-label small fw-bold">ابحث عن جهاز موجود بالاسم أو الموديل أو اختر من القائمة <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light text-primary"><i class="bi bi-search"></i></span>
+                                <input type="text" id="supplySearchInput" class="form-control" placeholder="اكتب للبحث الفوري عن جهاز موجود بالمحل..." autocomplete="off" oninput="filterSupplyDevices(this.value)" onfocus="showSupplyDeviceDropdown()" />
+                                <button type="button" class="btn btn-outline-secondary" onclick="toggleSupplyDeviceDropdownList()" title="عرض كل الأجهزة">
+                                    <i class="bi bi-chevron-down"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="clearSupplyDeviceSearch()" title="مسح">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+
+                            <!-- Live Search Dropdown -->
+                            <div id="supplySearchResults" class="list-group position-absolute w-100 shadow-lg border rounded-3 mt-1" style="max-height: 220px; overflow-y: auto; z-index: 1060; display: none; background: #fff;">
+                                @foreach (var p in products)
+                                {
+                                    <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-2 supply-device-item"
+                                            data-id="@p.Id"
+                                            data-name="@p.Name @(!string.IsNullOrEmpty(p.Storage) ? $"({p.Storage} / {p.Ram})" : "")"
+                                            data-cost="@p.PurchasePrice.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)"
+                                            data-price="@p.SellingPrice.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)"
+                                            data-stock="@p.StockQuantity"
+                                            onclick="selectSupplyDevice(this)">
+                                        <div>
+                                            <strong class="text-primary d-block">@p.Name</strong>
+                                            <small class="text-muted">@(!string.IsNullOrEmpty(p.Storage) ? $"{p.Storage} / {p.Ram} | " : "") تكلفة سابقة: @p.PurchasePrice.ToString("N0") ج.م</small>
+                                        </div>
+                                        <span class="badge bg-light text-dark border">مخزون: @p.StockQuantity</span>
                                     </button>
-                                </div>
+                                }
+                            </div>
 
-                                <!-- Live Search Dropdown -->
-                                <div id="supplySearchResults" class="list-group position-absolute w-100 shadow-lg border rounded-3 mt-1" style="max-height: 250px; overflow-y: auto; z-index: 1060; display: none;">
-                                    @foreach (var p in products)
-                                    {
-                                        <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-2 supply-device-item"
-                                                data-id="@p.Id"
-                                                data-name="@p.Name @(!string.IsNullOrEmpty(p.Storage) ? $"({p.Storage} / {p.Ram})" : "")"
-                                                data-cost="@p.PurchasePrice"
-                                                data-price="@p.SellingPrice"
-                                                data-stock="@p.StockQuantity"
-                                                onclick="selectSupplyDevice(this)">
-                                            <div>
-                                                <strong class="text-primary d-block">@p.Name</strong>
-                                                <small class="text-muted">@(!string.IsNullOrEmpty(p.Storage) ? $"{p.Storage} / {p.Ram} | " : "") تكلفة حالية: @p.PurchasePrice.ToString("N0") ج.م</small>
-                                            </div>
-                                            <span class="badge bg-light text-dark border">مخزون: @p.StockQuantity</span>
-                                        </button>
-                                    }
-                                </div>
-
-                                <!-- Selected Device Display Box -->
-                                <div id="selectedDeviceBox" class="p-2 mt-2 bg-white border rounded d-none align-items-center justify-content-between">
+                            <!-- Selected Device Display Card -->
+                            <div id="selectedDeviceBox" class="p-2 mt-2 bg-success-subtle border border-success-subtle rounded-3 d-none align-items-center justify-content-between">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="bi bi-check-circle-fill text-success fs-5"></i>
                                     <div>
-                                        <span class="text-muted small">الجهاز المحدد:</span>
-                                        <strong id="selectedDeviceName" class="text-dark ms-2"></strong>
-                                        <span id="selectedDeviceStockBadge" class="badge bg-info-subtle text-info border ms-2"></span>
+                                        <span class="text-muted small">تم اختيار:</span>
+                                        <strong id="selectedDeviceName" class="text-success ms-1"></strong>
+                                        <span id="selectedDeviceStockBadge" class="badge bg-white text-dark border ms-2"></span>
                                     </div>
-                                    <button type="button" class="btn btn-sm btn-link text-danger p-0 text-decoration-none" onclick="clearSupplyDeviceSelection()">
-                                        <i class="bi bi-x-circle ms-1"></i> تغيير الجهاز
-                                    </button>
                                 </div>
-                                <input type="hidden" id="selectedProductId" value="" />
+                                <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="clearSupplyDeviceSelection()">
+                                    <i class="bi bi-x ms-1"></i> تغيير الجهاز
+                                </button>
                             </div>
+                            <input type="hidden" id="selectedProductId" value="" />
+                        </div>
 
-                            <!-- New Device Section -->
-                            <div id="newProductSection" class="p-3 bg-white border rounded-3 mb-3" style="display: none;">
-                                <h6 class="fw-bold mb-3 text-primary"><i class="bi bi-phone ms-1"></i>بيانات الجهاز الجديد</h6>
-                                <div class="row g-2">
-                                    <div class="col-md-6">
-                                        <label class="form-label small fw-bold">اسم الجهاز والموديل <span class="text-danger">*</span></label>
-                                        <input type="text" id="newDeviceNameInput" class="form-control form-control-sm" placeholder="مثال: iPhone 15 Pro Max" />
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label small fw-bold">الشركة المصنعة</label>
-                                        <select id="newDeviceBrandSelect" class="form-select form-select-sm">
-                                            <option value="">اختر الشركة...</option>
-                                            @foreach (var b in brands)
-                                            {
-                                                <option value="@b.Id">@b.Name</option>
-                                            }
-                                        </select>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label class="form-label small fw-bold">التخزين</label>
-                                        <select id="newDeviceStorage" class="form-select form-select-sm">
-                                            <option value="128GB">128GB</option>
-                                            <option value="256GB">256GB</option>
-                                            <option value="512GB">512GB</option>
-                                            <option value="64GB">64GB</option>
-                                            <option value="1TB">1TB</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label class="form-label small fw-bold">الرام</label>
-                                        <select id="newDeviceRam" class="form-select form-select-sm">
-                                            <option value="8GB">8GB</option>
-                                            <option value="6GB">6GB</option>
-                                            <option value="12GB">12GB</option>
-                                            <option value="4GB">4GB</option>
-                                            <option value="16GB">16GB</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label class="form-label small fw-bold">اللون</label>
-                                        <input type="text" id="newDeviceColor" class="form-control form-control-sm" placeholder="أسود، أزرق..." />
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label class="form-label small fw-bold">السيريال / IMEI (اختياري)</label>
-                                        <input type="text" id="newDeviceImei" class="form-control form-control-sm font-monospace" placeholder="IMEI" />
-                                    </div>
+                        <!-- New Device Section -->
+                        <div id="newProductSection" class="p-3 bg-light border rounded-3 mb-3" style="display: none;">
+                            <h6 class="fw-bold mb-3 text-primary"><i class="bi bi-plus-square ms-1"></i>بيانات الجهاز الجديد</h6>
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold">اسم الجهاز والموديل <span class="text-danger">*</span></label>
+                                    <input type="text" id="newDeviceNameInput" class="form-control form-control-sm" placeholder="مثال: iPhone 15 Pro Max" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold">الشركة المصنعة</label>
+                                    <select id="newDeviceBrandSelect" class="form-select form-select-sm">
+                                        <option value="">اختر الشركة...</option>
+                                        @foreach (var b in brands)
+                                        {
+                                            <option value="@b.Id">@b.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-bold">التخزين</label>
+                                    <select id="newDeviceStorage" class="form-select form-select-sm">
+                                        <option value="128GB">128GB</option>
+                                        <option value="256GB">256GB</option>
+                                        <option value="512GB">512GB</option>
+                                        <option value="64GB">64GB</option>
+                                        <option value="1TB">1TB</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-bold">الرام</label>
+                                    <select id="newDeviceRam" class="form-select form-select-sm">
+                                        <option value="8GB">8GB</option>
+                                        <option value="6GB">6GB</option>
+                                        <option value="12GB">12GB</option>
+                                        <option value="4GB">4GB</option>
+                                        <option value="16GB">16GB</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-bold">اللون</label>
+                                    <input type="text" id="newDeviceColor" class="form-control form-control-sm" placeholder="أسود، أزرق..." />
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-bold">السيريال / IMEI (اختياري)</label>
+                                    <input type="text" id="newDeviceImei" class="form-control form-control-sm font-monospace" placeholder="IMEI" />
                                 </div>
                             </div>
+                        </div>
 
-                            <!-- Device Quantity & Cost Row -->
-                            <div class="row g-2 align-items-end">
-                                <div class="col-md-3 col-sm-6">
-                                    <label class="form-label small fw-bold">الكمية الموردة <span class="text-danger">*</span></label>
-                                    <input type="number" id="supplyItemQuantity" class="form-control form-control-sm" value="1" min="1" oninput="calcItemSubtotal()" />
+                        <!-- Device Quantity & Cost Row -->
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-3 col-sm-6">
+                                <label class="form-label small fw-bold">الكمية الموردة <span class="text-danger">*</span></label>
+                                <input type="number" id="supplyItemQuantity" class="form-control" value="1" min="1" oninput="updateLiveCalculations()" />
+                            </div>
+                            <div class="col-md-3 col-sm-6">
+                                <label class="form-label small fw-bold">سعر الشراء / التكلفة للقطعة <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <input type="number" step="1" min="1" id="supplyItemCostPrice" class="form-control fw-bold" placeholder="0" oninput="updateLiveCalculations()" />
+                                    <span class="input-group-text">ج.م</span>
                                 </div>
-                                <div class="col-md-3 col-sm-6">
-                                    <label class="form-label small fw-bold">سعر الشراء / التكلفة للقطعة <span class="text-danger">*</span></label>
-                                    <div class="input-group input-group-sm">
-                                        <input type="number" step="1" min="1" id="supplyItemCostPrice" class="form-control" placeholder="0" oninput="calcItemSubtotal()" />
-                                        <span class="input-group-text">ج.م</span>
-                                    </div>
+                            </div>
+                            <div class="col-md-3 col-sm-6">
+                                <label class="form-label small fw-bold">سعر البيع المقترح في الكاشير</label>
+                                <div class="input-group">
+                                    <input type="number" step="1" min="0" id="supplyItemSellingPrice" class="form-control" placeholder="0" />
+                                    <span class="input-group-text">ج.م</span>
                                 </div>
-                                <div class="col-md-3 col-sm-6">
-                                    <label class="form-label small fw-bold">سعر البيع المقترح في الكاشير</label>
-                                    <div class="input-group input-group-sm">
-                                        <input type="number" step="1" min="0" id="supplyItemSellingPrice" class="form-control" placeholder="0" />
-                                        <span class="input-group-text">ج.م</span>
-                                    </div>
-                                </div>
-                                <div class="col-md-3 col-sm-6">
-                                    <button type="button" class="btn btn-primary btn-sm w-100 fw-bold py-2" onclick="addDeviceToInvoice()">
-                                        <i class="bi bi-plus-circle-fill ms-1"></i> إضافة الجهاز للفاتورة
-                                    </button>
-                                </div>
+                            </div>
+                            <div class="col-md-3 col-sm-6">
+                                <button type="button" class="btn btn-outline-primary w-100 fw-bold py-2" onclick="addCurrentDeviceItem(true)">
+                                    <i class="bi bi-plus-circle-fill ms-1"></i> إضافة جهاز آخر للفاتورة
+                                </button>
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Step 2: Invoice Items Table -->
-                    <div class="card border mb-4">
-                        <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
-                            <span class="fw-bold small text-dark">
-                                <i class="bi bi-card-checklist ms-1 text-success"></i> الأجهزة المضافة للفاتورة الحالية (<span id="invoiceItemsCount">0</span> أجهزة)
-                            </span>
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="small text-muted">إجمالي الفاتورة:</span>
-                                <span class="badge bg-success fs-6 fw-bold" id="invoiceItemsSubtotal">0 ج.م</span>
-                            </div>
-                        </div>
-                        <div class="card-body p-0">
-                            <div class="table-responsive" style="max-height: 220px; overflow-y: auto;">
-                                <table class="table table-sm table-hover align-middle mb-0">
-                                    <thead class="table-light small">
-                                        <tr>
-                                            <th>#</th>
-                                            <th>اسم الجهاز / الموديل</th>
-                                            <th class="text-center" style="width: 90px;">الكمية</th>
-                                            <th style="width: 120px;">سعر التكلفة</th>
-                                            <th style="width: 120px;">سعر البيع</th>
-                                            <th style="width: 120px;">الإجمالي</th>
-                                            <th class="text-center" style="width: 60px;">حذف</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="invoiceItemsTableBody">
-                                        <tr id="emptyInvoiceItemsRow">
-                                            <td colspan="7" class="text-center text-muted py-4 small">
-                                                <i class="bi bi-inbox fs-4 d-block mb-1 text-secondary opacity-50"></i>
-                                                لم يتم إضافة أي أجهزة للفاتورة بعد. قم باختيار الجهاز من الأعلى ثم اضغط "إضافة الجهاز للفاتورة".
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
+                <!-- Step 2: Added Devices Table (Shows when multiple items) -->
+                <div id="addedDevicesCard" class="card border shadow-sm mb-3" style="display: none;">
+                    <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
+                        <span class="fw-bold small text-dark">
+                            <i class="bi bi-list-check ms-1 text-success"></i> الأجهزة المضافة في الفاتورة (<span id="invoiceItemsCount">0</span>)
+                        </span>
+                        <span class="badge bg-success fs-6" id="invoiceItemsSubtotal">0 ج.م</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
+                            <table class="table table-sm table-hover align-middle mb-0">
+                                <thead class="table-light small">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>اسم الجهاز</th>
+                                        <th class="text-center">الكمية</th>
+                                        <th>سعر التكلفة</th>
+                                        <th>سعر البيع</th>
+                                        <th>الإجمالي</th>
+                                        <th class="text-center">حذف</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="invoiceItemsTableBody">
+                                </tbody>
+                            </table>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Step 3: Financials & Payment -->
-                    <div class="row g-3">
-                        <div class="col-md-4">
+                <!-- Step 3: Financials & Payment -->
+                <div class="card border-0 bg-light p-3 rounded-3 mb-2">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-dark">إجمالي الفاتورة</label>
+                            <input type="text" id="supplyTotalDisplay" class="form-control fw-bold bg-white text-primary fs-5" readonly value="0 ج.م" />
+                        </div>
+                        <div class="col-md-3">
                             <label class="form-label small fw-bold text-success">المسدد نقداً للمورد الآن</label>
                             <div class="input-group">
-                                <input type="number" step="1" min="0" name="paidAmount" id="supplyPaidAmount" class="form-control" value="0" oninput="calcSupplyRemaining()" />
+                                <input type="number" step="1" min="0" name="paidAmount" id="supplyPaidAmount" class="form-control fw-bold text-success" value="0" oninput="updateLiveCalculations()" />
                                 <span class="input-group-text">ج.م</span>
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-danger">المتبقي في حساب المورد (آجل)</label>
+                            <input type="text" id="supplyRemainingDisplay" class="form-control fw-bold bg-white text-danger fs-6" readonly value="0 ج.م" />
+                        </div>
+                        <div class="col-md-3">
                             <label class="form-label small fw-bold">طريقة الدفع</label>
                             <select name="paymentMethod" class="form-select">
                                 <option value="Cash">كاش (نقدي من الدرج)</option>
@@ -503,25 +513,28 @@
                                 <option value="Card">فيزا / بطاقة</option>
                             </select>
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-bold text-danger">المتبقي في حساب المورد (آجل)</label>
-                            <input type="text" id="supplyRemainingDisplay" class="form-control fw-bold bg-light text-danger" readonly value="0 ج.م" />
-                        </div>
-
                         <div class="col-md-12">
                             <label class="form-label small fw-bold">ملاحظات الفاتورة</label>
                             <input type="text" name="notes" class="form-control form-control-sm" placeholder="مثال: فاتورة توريد دفعة شتاء - خصم خاص..." />
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer bg-light p-3 justify-content-between">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="submit" id="submitSupplyBtn" class="btn btn-success btn-sm px-4 fw-bold shadow-sm" disabled>
+            </div>
+
+            <!-- Modal Footer (Sticky & Always Visible at Bottom) -->
+            <div class="modal-footer bg-white border-top p-3 d-flex justify-content-between align-items-center position-sticky bottom-0 shadow-sm" style="z-index: 1055;">
+                <button type="button" class="btn btn-outline-secondary px-3" data-bs-dismiss="modal">إلغاء</button>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="text-end d-none d-sm-block">
+                        <span class="small text-muted d-block">إجمالي الفاتورة:</span>
+                        <span class="fw-bold text-success fs-5 font-monospace" id="footerTotalDisplay">0 ج.م</span>
+                    </div>
+                    <button type="submit" id="submitSupplyBtn" class="btn btn-success btn-lg px-4 fw-bold shadow-sm">
                         <i class="bi bi-check2-circle ms-1"></i> حفظ وتأكيد فاتورة التوريد
                     </button>
                 </div>
-            </form>
-        </div>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -742,6 +755,7 @@
         if (!isExisting) {
             clearSupplyDeviceSelection();
         }
+        updateLiveCalculations();
     }
 
     // Live search for devices
@@ -769,6 +783,16 @@
         filterSupplyDevices(input.value);
     }
 
+    function toggleSupplyDeviceDropdownList() {
+        const resultsContainer = document.getElementById('supplySearchResults');
+        if (resultsContainer.style.display === 'block') {
+            resultsContainer.style.display = 'none';
+        } else {
+            filterSupplyDevices('');
+            resultsContainer.style.display = 'block';
+        }
+    }
+
     function clearSupplyDeviceSearch() {
         const input = document.getElementById('supplySearchInput');
         input.value = '';
@@ -792,8 +816,14 @@
         document.getElementById('supplySearchInput').value = name;
         document.getElementById('supplySearchResults').style.display = 'none';
 
-        document.getElementById('supplyItemCostPrice').value = cost || '';
-        document.getElementById('supplyItemSellingPrice').value = price || '';
+        if (cost && parseFloat(cost) > 0) {
+            document.getElementById('supplyItemCostPrice').value = cost;
+        }
+        if (price && parseFloat(price) > 0) {
+            document.getElementById('supplyItemSellingPrice').value = price;
+        }
+
+        updateLiveCalculations();
         document.getElementById('supplyItemQuantity').focus();
     }
 
@@ -805,6 +835,7 @@
         document.getElementById('supplySearchInput').value = '';
         document.getElementById('supplyItemCostPrice').value = '';
         document.getElementById('supplyItemSellingPrice').value = '';
+        updateLiveCalculations();
     }
 
     // Close live search dropdown when clicking outside
@@ -818,27 +849,40 @@
         }
     });
 
-    function calcItemSubtotal() {
-        // Live feedback if needed
-    }
-
-    // Add device to invoice
-    function addDeviceToInvoice() {
+    // Add device to invoice (can clear inputs for next item or keep for single submit)
+    function addCurrentDeviceItem(clearInputsAfter) {
         const isExisting = document.getElementById('supplyExistingRadio').checked;
         const qty = parseInt(document.getElementById('supplyItemQuantity').value) || 0;
         const cost = parseFloat(document.getElementById('supplyItemCostPrice').value) || 0;
         const sell = parseFloat(document.getElementById('supplyItemSellingPrice').value) || 0;
 
+        if (isExisting) {
+            const prodId = document.getElementById('selectedProductId').value;
+            const prodName = document.getElementById('selectedDeviceName').innerText;
+            if (!prodId) {
+                alert('يرجى اختيار جهاز من قائمة البحث أولاً.');
+                document.getElementById('supplySearchInput').focus();
+                return false;
+            }
+        } else {
+            const newName = document.getElementById('newDeviceNameInput').value.trim();
+            if (!newName) {
+                alert('يرجى كتابة اسم وموديل الجهاز الجديد.');
+                document.getElementById('newDeviceNameInput').focus();
+                return false;
+            }
+        }
+
         if (qty <= 0) {
             alert('يرجى تحديد كمية صحيحة أكبر من صفر.');
             document.getElementById('supplyItemQuantity').focus();
-            return;
+            return false;
         }
 
         if (cost <= 0) {
             alert('يرجى تحديد سعر شراء / تكلفة صحيح أكبر من صفر.');
             document.getElementById('supplyItemCostPrice').focus();
-            return;
+            return false;
         }
 
         let item = {
@@ -849,23 +893,11 @@
         };
 
         if (isExisting) {
-            const prodId = document.getElementById('selectedProductId').value;
-            const prodName = document.getElementById('selectedDeviceName').innerText;
-            if (!prodId) {
-                alert('يرجى اختيار جهاز من قائمة البحث أولاً.');
-                document.getElementById('supplySearchInput').focus();
-                return;
-            }
-            item.productId = parseInt(prodId);
-            item.name = prodName;
+            item.productId = parseInt(document.getElementById('selectedProductId').value);
+            item.name = document.getElementById('selectedDeviceName').innerText;
             item.isNew = false;
         } else {
             const newName = document.getElementById('newDeviceNameInput').value.trim();
-            if (!newName) {
-                alert('يرجى كتابة اسم وموديل الجهاز الجديد.');
-                document.getElementById('newDeviceNameInput').focus();
-                return;
-            }
             const brandId = document.getElementById('newDeviceBrandSelect').value;
             item.productId = null;
             item.name = newName;
@@ -880,19 +912,22 @@
         currentInvoiceItems.push(item);
         renderInvoiceItemsTable();
 
-        // Reset input fields for next device
-        clearSupplyDeviceSelection();
-        if (!isExisting) {
-            document.getElementById('newDeviceNameInput').value = '';
-            document.getElementById('newDeviceColor').value = '';
-            document.getElementById('newDeviceImei').value = '';
+        if (clearInputsAfter) {
+            clearSupplyDeviceSelection();
+            if (!isExisting) {
+                document.getElementById('newDeviceNameInput').value = '';
+                document.getElementById('newDeviceColor').value = '';
+                document.getElementById('newDeviceImei').value = '';
+            }
+            document.getElementById('supplyItemQuantity').value = 1;
+            document.getElementById('supplyItemCostPrice').value = '';
+            document.getElementById('supplyItemSellingPrice').value = '';
+            if (isExisting) {
+                document.getElementById('supplySearchInput').focus();
+            }
         }
-        document.getElementById('supplyItemQuantity').value = 1;
-        document.getElementById('supplyItemCostPrice').value = '';
-        document.getElementById('supplyItemSellingPrice').value = '';
-        if (isExisting) {
-            document.getElementById('supplySearchInput').focus();
-        }
+
+        return true;
     }
 
     function removeInvoiceItem(index) {
@@ -901,29 +936,21 @@
     }
 
     function renderInvoiceItemsTable() {
+        const addedCard = document.getElementById('addedDevicesCard');
         const tbody = document.getElementById('invoiceItemsTableBody');
         const countEl = document.getElementById('invoiceItemsCount');
         const subtotalEl = document.getElementById('invoiceItemsSubtotal');
-        const jsonInput = document.getElementById('supplyItemsJson');
-        const submitBtn = document.getElementById('submitSupplyBtn');
 
         if (!currentInvoiceItems || currentInvoiceItems.length === 0) {
-            tbody.innerHTML = `
-                <tr id="emptyInvoiceItemsRow">
-                    <td colspan="7" class="text-center text-muted py-4 small">
-                        <i class="bi bi-inbox fs-4 d-block mb-1 text-secondary opacity-50"></i>
-                        لم يتم إضافة أي أجهزة للفاتورة بعد. قم باختيار الجهاز من الأعلى ثم اضغط "إضافة الجهاز للفاتورة".
-                    </td>
-                </tr>
-            `;
+            addedCard.style.display = 'none';
+            tbody.innerHTML = '';
             countEl.innerText = '0';
             subtotalEl.innerText = '0 ج.م';
-            jsonInput.value = '[]';
-            submitBtn.disabled = true;
-            calcSupplyRemaining();
+            updateLiveCalculations();
             return;
         }
 
+        addedCard.style.display = 'block';
         let html = '';
         let totalSum = 0;
         let totalDevices = 0;
@@ -955,18 +982,55 @@
         tbody.innerHTML = html;
         countEl.innerText = totalDevices;
         subtotalEl.innerText = totalSum.toLocaleString('en-US') + ' ج.م';
-        jsonInput.value = JSON.stringify(currentInvoiceItems);
-        submitBtn.disabled = false;
 
-        calcSupplyRemaining();
+        updateLiveCalculations();
     }
 
-    function calcSupplyRemaining() {
+    function updateLiveCalculations() {
         let total = 0;
-        currentInvoiceItems.forEach(i => total += i.totalPrice);
+        if (currentInvoiceItems && currentInvoiceItems.length > 0) {
+            currentInvoiceItems.forEach(i => total += i.totalPrice);
+        } else {
+            const qty = parseInt(document.getElementById('supplyItemQuantity').value) || 0;
+            const cost = parseFloat(document.getElementById('supplyItemCostPrice').value) || 0;
+            total = qty * cost;
+        }
+
+        const totalFormatted = total.toLocaleString('en-US') + ' ج.م';
+        document.getElementById('supplyTotalDisplay').value = totalFormatted;
+        const footerTotal = document.getElementById('footerTotalDisplay');
+        if (footerTotal) footerTotal.innerText = totalFormatted;
+
         const paid = parseFloat(document.getElementById('supplyPaidAmount').value) || 0;
         const rem = Math.max(0, total - paid);
         document.getElementById('supplyRemainingDisplay').value = rem.toLocaleString('en-US') + ' ج.م';
+    }
+
+    // Submit handler: validates and ensures items are loaded
+    function handleSupplyFormSubmit(event) {
+        if (!currentInvoiceItems || currentInvoiceItems.length === 0) {
+            // User did not click "Add another device", they just filled the form and clicked Save!
+            const success = addCurrentDeviceItem(false);
+            if (!success) {
+                event.preventDefault();
+                return false;
+            }
+        } else {
+            // If user already has items in table, check if they also have a valid device in the inputs above
+            const isExisting = document.getElementById('supplyExistingRadio').checked;
+            const prodId = document.getElementById('selectedProductId').value;
+            const newName = document.getElementById('newDeviceNameInput').value.trim();
+            const cost = parseFloat(document.getElementById('supplyItemCostPrice').value) || 0;
+            const qty = parseInt(document.getElementById('supplyItemQuantity').value) || 0;
+
+            if (((isExisting && prodId) || (!isExisting && newName)) && cost > 0 && qty > 0) {
+                // Auto add this device too!
+                addCurrentDeviceItem(false);
+            }
+        }
+
+        document.getElementById('supplyItemsJson').value = JSON.stringify(currentInvoiceItems);
+        return true;
     }
 
     function openEditSupplyOrderModal(orderId, orderNum, productId, quantity, costPrice, sellingPrice, paidAmount, paymentMethod, notes) {
