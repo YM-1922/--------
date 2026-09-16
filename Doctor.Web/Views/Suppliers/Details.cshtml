@@ -133,6 +133,7 @@
                                 <th>المسدد منها</th>
                                 <th>المتبقي</th>
                                 <th>ملاحظات</th>
+                                <th class="text-center" style="width: 110px;">الإجراءات</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -140,6 +141,13 @@
                             {
                                 foreach (var ord in Model.SupplyOrders.OrderByDescending(o => o.CreatedAt))
                                 {
+                                    var firstItem = ord.Items.FirstOrDefault();
+                                    int prodId = firstItem?.ProductId ?? 0;
+                                    int qty = firstItem?.Quantity ?? 1;
+                                    decimal cost = firstItem?.CostPrice ?? ord.TotalAmount;
+                                    decimal sell = firstItem?.SellingPrice ?? 0;
+                                    string pMethod = ord.Payments.FirstOrDefault()?.PaymentMethod.ToString() ?? "Cash";
+
                                     <tr>
                                         <td>
                                             <span class="badge bg-light text-dark font-monospace border">@ord.OrderNumber</span>
@@ -176,13 +184,29 @@
                                             }
                                         </td>
                                         <td class="small text-muted">@(ord.Notes ?? "-")</td>
+                                        <td class="text-center">
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <button type="button" class="btn btn-outline-secondary" 
+                                                        onclick="openEditSupplyOrderModal(@ord.Id, '@ord.OrderNumber', @prodId, @qty, @cost, @sell, @ord.PaidAmount, '@pMethod', '@Html.Raw(Html.Encode(ord.Notes ?? ""))')"
+                                                        title="تعديل الفاتورة">
+                                                    <i class="bi bi-pencil"></i>
+                                                </button>
+                                                <form asp-controller="Suppliers" asp-action="DeleteSupplyOrder" method="post" onsubmit="return confirm('هل أنت متأكد من حذف فاتورة التوريد رقم (@ord.OrderNumber)؟\n\n- سيتم خصم كمية الأجهزة من رصيد المخزن.\n- سيتم حذف أي دفعات مرتبطة بهذه الفاتورة وتحديث حساب المورد.');" class="d-inline">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="orderId" value="@ord.Id" />
+                                                    <button type="submit" class="btn btn-outline-danger" title="حذف الفاتورة">
+                                                        <i class="bi bi-trash-fill"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
                                     </tr>
                                 }
                             }
                             else
                             {
                                 <tr>
-                                    <td colspan="7" class="text-center py-4 text-muted">لا توجد عمليات توريد مسجلة حتى الآن لهذا المورد.</td>
+                                    <td colspan="8" class="text-center py-4 text-muted">لا توجد عمليات توريد مسجلة حتى الآن لهذا المورد.</td>
                                 </tr>
                             }
                         </tbody>
@@ -433,6 +457,100 @@
     </div>
 </div>
 
+<!-- Modal: Edit Supply Order -->
+<div class="modal fade" id="editSupplyOrderModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-pencil-square ms-2"></i>تعديل فاتورة توريد (<span id="editSupplyOrderNumDisplay"></span>)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-action="EditSupplyOrder" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" id="editSupplyOrderId" name="orderId" />
+                <div class="modal-body p-3">
+                    <div class="alert alert-warning small mb-3">
+                        <i class="bi bi-exclamation-triangle ms-1"></i>
+                        تعديل الكمية سيقوم بتحديث رصيد المخزن للجهاز المورد تلقائياً وتحديث كشف حساب المورد.
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">الجهاز المورد <span class="text-danger">*</span></label>
+                        <select name="productId" id="editSupplyProductSelect" class="form-select" onchange="onEditSupplyProductChanged()">
+                            <option value="">-- اختر الجهاز --</option>
+                            @foreach (var p in products)
+                            {
+                                <option value="@p.Id" data-cost="@p.PurchasePrice" data-price="@p.SellingPrice">
+                                    @p.Name @(!string.IsNullOrEmpty(p.Storage) ? $"({p.Storage} / {p.Ram})" : "") - مخزون حالي: @p.StockQuantity
+                                </option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="row g-2">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">الكمية الموردة <span class="text-danger">*</span></label>
+                            <input type="number" name="quantity" id="editSupplyQuantity" class="form-control" min="1" required oninput="calcEditSupplyTotal()" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">سعر الشراء / التكلفة <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <input type="number" step="1" min="0" name="costPrice" id="editSupplyCostPrice" class="form-control" required oninput="calcEditSupplyTotal()" />
+                                <span class="input-group-text">ج.م</span>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">سعر البيع</label>
+                            <div class="input-group">
+                                <input type="number" step="1" min="0" name="sellingPrice" id="editSupplySellingPrice" class="form-control" />
+                                <span class="input-group-text">ج.م</span>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-primary">إجمالي الفاتورة</label>
+                            <input type="text" id="editSupplyTotalAmountDisplay" class="form-control fw-bold bg-light text-primary" readonly value="0 ج.م" />
+                        </div>
+
+                        <div class="col-md-4 mt-3">
+                            <label class="form-label small fw-bold text-success">المسدد نقداً للمورد</label>
+                            <div class="input-group">
+                                <input type="number" step="1" min="0" name="paidAmount" id="editSupplyPaidAmount" class="form-control" oninput="calcEditSupplyRemaining()" />
+                                <span class="input-group-text">ج.م</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mt-3">
+                            <label class="form-label small fw-bold">طريقة الدفع</label>
+                            <select name="paymentMethod" id="editSupplyPaymentMethod" class="form-select">
+                                <option value="Cash">كاش (نقدي من الدرج)</option>
+                                <option value="InstaPay">إنستاباي (InstaPay)</option>
+                                <option value="Transfer">محفظة إلكترونية / تحويل</option>
+                                <option value="Card">فيزا / بطاقة</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mt-3">
+                            <label class="form-label small fw-bold text-danger">المتبقي في حساب المورد (آجل)</label>
+                            <input type="text" id="editSupplyRemainingDisplay" class="form-control fw-bold bg-light text-danger" readonly value="0 ج.م" />
+                        </div>
+
+                        <div class="col-md-12 mt-2">
+                            <label class="form-label small fw-bold">ملاحظات التوريد</label>
+                            <input type="text" name="notes" id="editSupplyNotes" class="form-control form-control-sm" />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light p-2">
+                    <button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-primary btn-sm px-4">
+                        <i class="bi bi-check-lg ms-1"></i> حفظ التعديلات
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Modal: Payment / Sannad Sarf -->
 <div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -607,6 +725,52 @@
         const paid = parseFloat(document.getElementById('supplyPaidAmount').value) || 0;
         const rem = Math.max(0, total - paid);
         document.getElementById('supplyRemainingDisplay').value = rem.toLocaleString('en-US') + ' ج.م';
+    }
+
+    function openEditSupplyOrderModal(orderId, orderNum, productId, quantity, costPrice, sellingPrice, paidAmount, paymentMethod, notes) {
+        document.getElementById('editSupplyOrderId').value = orderId;
+        document.getElementById('editSupplyOrderNumDisplay').innerText = orderNum;
+        document.getElementById('editSupplyProductSelect').value = productId > 0 ? productId : '';
+        document.getElementById('editSupplyQuantity').value = quantity;
+        document.getElementById('editSupplyCostPrice').value = costPrice;
+        document.getElementById('editSupplySellingPrice').value = sellingPrice;
+        document.getElementById('editSupplyPaidAmount').value = paidAmount;
+        document.getElementById('editSupplyPaymentMethod').value = paymentMethod || 'Cash';
+        document.getElementById('editSupplyNotes').value = notes || '';
+
+        calcEditSupplyTotal();
+
+        var modal = new bootstrap.Modal(document.getElementById('editSupplyOrderModal'));
+        modal.show();
+    }
+
+    function onEditSupplyProductChanged() {
+        const select = document.getElementById('editSupplyProductSelect');
+        const opt = select.options[select.selectedIndex];
+        if (opt && opt.value) {
+            const cost = opt.getAttribute('data-cost');
+            const price = opt.getAttribute('data-price');
+            if (cost) document.getElementById('editSupplyCostPrice').value = cost;
+            if (price) document.getElementById('editSupplySellingPrice').value = price;
+        }
+        calcEditSupplyTotal();
+    }
+
+    function calcEditSupplyTotal() {
+        const qty = parseFloat(document.getElementById('editSupplyQuantity').value) || 0;
+        const cost = parseFloat(document.getElementById('editSupplyCostPrice').value) || 0;
+        const total = qty * cost;
+        document.getElementById('editSupplyTotalAmountDisplay').value = total.toLocaleString('en-US') + ' ج.م';
+        calcEditSupplyRemaining();
+    }
+
+    function calcEditSupplyRemaining() {
+        const qty = parseFloat(document.getElementById('editSupplyQuantity').value) || 0;
+        const cost = parseFloat(document.getElementById('editSupplyCostPrice').value) || 0;
+        const total = qty * cost;
+        const paid = parseFloat(document.getElementById('editSupplyPaidAmount').value) || 0;
+        const rem = Math.max(0, total - paid);
+        document.getElementById('editSupplyRemainingDisplay').value = rem.toLocaleString('en-US') + ' ج.م';
     }
 </script>
 }

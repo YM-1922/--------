@@ -151,7 +151,7 @@ public class PosService : IPosService
             PaymentReferenceNumber = dto.PaymentReferenceNumber?.Trim(),
             Status = SaleStatus.Completed,
             Notes = dto.Notes,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.Now
         };
 
         foreach (var item in dto.Items)
@@ -179,9 +179,9 @@ public class PosService : IPosService
             {
                 Amount = paid,
                 PaymentMethod = dto.PaymentMethod,
-                ReferenceNumber = !string.IsNullOrWhiteSpace(dto.PaymentReferenceNumber) ? dto.PaymentReferenceNumber.Trim() : $"PAY-{DateTime.UtcNow:yyyyMMdd}-{invoiceNumber}",
+                ReferenceNumber = !string.IsNullOrWhiteSpace(dto.PaymentReferenceNumber) ? dto.PaymentReferenceNumber.Trim() : $"PAY-{DateTime.Now:yyyyMMdd}-{invoiceNumber}",
                 Notes = paymentNote,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.Now
             });
         }
 

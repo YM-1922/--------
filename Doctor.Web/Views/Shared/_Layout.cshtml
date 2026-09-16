@@ -82,6 +82,11 @@
                                 <i class="bi bi-receipt"></i>
                                 <span>الفواتير</span>
                             </a>
+
+                            <a href="@Url.Action("Index", "Expenses")" class="nav-item-link @(currentController == "Expenses" ? "active" : "")">
+                                <i class="bi bi-wallet2"></i>
+                                <span>مصروفات المحل</span>
+                            </a>
                         }
 
                         @if (userRole == "Admin")
@@ -189,6 +194,11 @@
                         <a href="@Url.Action("Invoices", "Sales")" class="mobile-nav-link @(currentController == "Sales" && currentAction == "Invoices" ? "active" : "")">
                             <i class="bi bi-receipt ms-2"></i>
                             <span>سجل الفواتير</span>
+                        </a>
+
+                        <a href="@Url.Action("Index", "Expenses")" class="mobile-nav-link @(currentController == "Expenses" ? "active" : "")">
+                            <i class="bi bi-wallet2 ms-2"></i>
+                            <span>مصروفات المحل</span>
                         </a>
                     }
 

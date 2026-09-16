@@ -63,7 +63,7 @@ public class SuppliersController : Controller
 
         supplier.Name = supplier.Name.Trim();
         supplier.PhoneNumber = supplier.PhoneNumber.Trim();
-        supplier.CreatedAt = DateTime.UtcNow;
+        supplier.CreatedAt = DateTime.Now;
         supplier.IsActive = true;
 
         _context.Suppliers.Add(supplier);
@@ -76,13 +76,13 @@ public class SuppliersController : Controller
             var initialOrder = new SupplyOrder
             {
                 SupplierId = supplier.Id,
-                OrderNumber = "INIT-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss"),
+                OrderNumber = "INIT-" + DateTime.Now.ToString("yyyyMMddHHmmss"),
                 TotalAmount = initialBalance.Value,
                 PaidAmount = 0,
                 RemainingAmount = initialBalance.Value,
                 Notes = "رصيد سابق / افتتاحي",
                 UserId = userId > 0 ? userId : null,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.Now
             };
             _context.SupplyOrders.Add(initialOrder);
             await _context.SaveChangesAsync();
@@ -208,7 +208,7 @@ public class SuppliersController : Controller
                     QuantityAfter = product.StockQuantity,
                     UserId = userId > 0 ? userId : null,
                     Notes = $"توريد من المورد {supplier.Name} (متوسط سعر الشراء: {product.PurchasePrice:N2} ج.م)",
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.Now
                 });
             }
             else
@@ -252,10 +252,10 @@ public class SuppliersController : Controller
                     StockQuantity = quantity,
                     MinStockLevel = 1,
                     ProductType = ProductType.Device,
-                    Barcode = DateTime.UtcNow.Ticks.ToString()[^12..],
+                    Barcode = DateTime.Now.Ticks.ToString()[^12..],
                     ImageUrl = imageUrl,
                     IsActive = true,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.Now
                 };
 
                 _context.Products.Add(product);
@@ -270,7 +270,7 @@ public class SuppliersController : Controller
                     QuantityAfter = quantity,
                     UserId = userId > 0 ? userId : null,
                     Notes = $"توريد جهاز جديد من المورد {supplier.Name}",
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.Now
                 });
             }
 
@@ -281,13 +281,13 @@ public class SuppliersController : Controller
             var supplyOrder = new SupplyOrder
             {
                 SupplierId = supplierId,
-                OrderNumber = "ORD-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss"),
+                OrderNumber = "ORD-" + DateTime.Now.ToString("yyyyMMddHHmmss"),
                 UserId = userId > 0 ? userId : null,
                 TotalAmount = totalAmount,
                 PaidAmount = actualPaid,
                 RemainingAmount = remaining,
                 Notes = notes,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.Now
             };
 
             _context.SupplyOrders.Add(supplyOrder);
@@ -315,7 +315,7 @@ public class SuppliersController : Controller
                     PaymentMethod = paymentMethod,
                     Notes = $"دفعة فورية لتوريد ({supplyOrder.OrderNumber})",
                     ReferenceNumber = supplyOrder.OrderNumber,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.Now
                 };
                 _context.SupplierPayments.Add(payment);
             }
@@ -357,7 +357,7 @@ public class SuppliersController : Controller
             PaymentMethod = paymentMethod,
             ReferenceNumber = referenceNumber?.Trim(),
             Notes = notes?.Trim(),
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.Now
         };
 
         _context.SupplierPayments.Add(payment);
@@ -444,5 +444,203 @@ public class SuppliersController : Controller
 
         TempData["Success"] = $"تم حذف المورد ({name}) وكافة بيانات توريداته بنجاح.";
         return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EditSupplyOrder(
+        int orderId,
+        int? productId,
+        int quantity,
+        decimal costPrice,
+        decimal sellingPrice,
+        decimal paidAmount,
+        PaymentMethod paymentMethod,
+        string? notes)
+    {
+        var order = await _context.SupplyOrders
+            .Include(o => o.Items)
+            .Include(o => o.Payments)
+            .FirstOrDefaultAsync(o => o.Id == orderId);
+
+        if (order == null)
+        {
+            TempData["Error"] = "فاتورة التوريد غير موجودة.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (quantity <= 0 || costPrice <= 0)
+        {
+            TempData["Error"] = "يرجى تحديد كمية وتكلفة توريد صحيحة أكبر من صفر.";
+            return RedirectToAction(nameof(Details), new { id = order.SupplierId });
+        }
+
+        int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out int userId);
+        var item = order.Items.FirstOrDefault();
+
+        if (item != null)
+        {
+            var oldProduct = await _context.Products.FindAsync(item.ProductId);
+            if (oldProduct != null)
+            {
+                oldProduct.StockQuantity -= item.Quantity;
+                if (oldProduct.StockQuantity < 0) oldProduct.StockQuantity = 0;
+            }
+
+            int targetProductId = (productId.HasValue && productId.Value > 0) ? productId.Value : item.ProductId;
+            var targetProduct = await _context.Products.FindAsync(targetProductId);
+            if (targetProduct != null)
+            {
+                targetProduct.StockQuantity += quantity;
+                if (sellingPrice > 0)
+                {
+                    targetProduct.SellingPrice = sellingPrice;
+                }
+                targetProduct.PurchasePrice = costPrice;
+
+                _context.InventoryTransactions.Add(new InventoryTransaction
+                {
+                    ProductId = targetProduct.Id,
+                    TransactionType = InventoryTransactionType.Adjustment,
+                    Quantity = quantity,
+                    QuantityBefore = targetProduct.StockQuantity - quantity,
+                    QuantityAfter = targetProduct.StockQuantity,
+                    UserId = userId > 0 ? userId : null,
+                    Notes = $"تعديل فاتورة توريد رقم {order.OrderNumber}",
+                    CreatedAt = DateTime.Now
+                });
+            }
+
+            item.ProductId = targetProductId;
+            item.Quantity = quantity;
+            item.CostPrice = costPrice;
+            item.SellingPrice = sellingPrice > 0 ? sellingPrice : (targetProduct?.SellingPrice ?? 0);
+            item.TotalPrice = costPrice * quantity;
+        }
+        else
+        {
+            if (productId.HasValue && productId.Value > 0)
+            {
+                var targetProduct = await _context.Products.FindAsync(productId.Value);
+                if (targetProduct != null)
+                {
+                    targetProduct.StockQuantity += quantity;
+                    if (sellingPrice > 0) targetProduct.SellingPrice = sellingPrice;
+                    targetProduct.PurchasePrice = costPrice;
+
+                    var newItem = new SupplyOrderItem
+                    {
+                        SupplyOrderId = order.Id,
+                        ProductId = targetProduct.Id,
+                        Quantity = quantity,
+                        CostPrice = costPrice,
+                        SellingPrice = sellingPrice > 0 ? sellingPrice : targetProduct.SellingPrice,
+                        TotalPrice = costPrice * quantity
+                    };
+                    _context.SupplyOrderItems.Add(newItem);
+                }
+            }
+        }
+
+        decimal totalAmount = costPrice * quantity;
+        decimal actualPaid = Math.Clamp(paidAmount, 0, totalAmount);
+        decimal remaining = totalAmount - actualPaid;
+
+        order.TotalAmount = totalAmount;
+        order.PaidAmount = actualPaid;
+        order.RemainingAmount = remaining;
+        order.Notes = notes?.Trim();
+
+        var linkedPayment = order.Payments.FirstOrDefault();
+        if (actualPaid > 0)
+        {
+            if (linkedPayment != null)
+            {
+                linkedPayment.Amount = actualPaid;
+                linkedPayment.PaymentMethod = paymentMethod;
+                linkedPayment.Notes = $"دفعة فورية لتوريد ({order.OrderNumber})";
+            }
+            else
+            {
+                var newPayment = new SupplierPayment
+                {
+                    SupplierId = order.SupplierId,
+                    SupplyOrderId = order.Id,
+                    Amount = actualPaid,
+                    PaymentMethod = paymentMethod,
+                    ReferenceNumber = order.OrderNumber,
+                    Notes = $"دفعة فورية لتوريد ({order.OrderNumber})",
+                    CreatedAt = DateTime.Now
+                };
+                _context.SupplierPayments.Add(newPayment);
+            }
+        }
+        else if (linkedPayment != null)
+        {
+            _context.SupplierPayments.Remove(linkedPayment);
+        }
+
+        await _context.SaveChangesAsync();
+
+        TempData["Success"] = $"تم تعديل فاتورة التوريد ({order.OrderNumber}) وتحديث المخزون وحساب المورد بنجاح.";
+        return RedirectToAction(nameof(Details), new { id = order.SupplierId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteSupplyOrder(int orderId)
+    {
+        var order = await _context.SupplyOrders
+            .Include(o => o.Items)
+            .Include(o => o.Payments)
+            .FirstOrDefaultAsync(o => o.Id == orderId);
+
+        if (order == null)
+        {
+            TempData["Error"] = "فاتورة التوريد غير موجودة.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        int supplierId = order.SupplierId;
+        string orderNum = order.OrderNumber;
+        int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out int userId);
+
+        foreach (var item in order.Items)
+        {
+            var product = await _context.Products.FindAsync(item.ProductId);
+            if (product != null)
+            {
+                int oldStock = product.StockQuantity;
+                product.StockQuantity = Math.Max(0, product.StockQuantity - item.Quantity);
+
+                _context.InventoryTransactions.Add(new InventoryTransaction
+                {
+                    ProductId = product.Id,
+                    TransactionType = InventoryTransactionType.Adjustment,
+                    Quantity = -item.Quantity,
+                    QuantityBefore = oldStock,
+                    QuantityAfter = product.StockQuantity,
+                    UserId = userId > 0 ? userId : null,
+                    Notes = $"إلغاء وحذف فاتورة توريد رقم {orderNum}",
+                    CreatedAt = DateTime.Now
+                });
+            }
+        }
+
+        if (order.Items.Any())
+        {
+            _context.SupplyOrderItems.RemoveRange(order.Items);
+        }
+
+        if (order.Payments.Any())
+        {
+            _context.SupplierPayments.RemoveRange(order.Payments);
+        }
+
+        _context.SupplyOrders.Remove(order);
+        await _context.SaveChangesAsync();
+
+        TempData["Success"] = $"تم حذف فاتورة التوريد ({orderNum}) وإعادة خصم الأجهزة من المخزن وتحديث حساب المورد بنجاح.";
+        return RedirectToAction(nameof(Details), new { id = supplierId });
     }
 }

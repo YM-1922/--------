@@ -40,6 +40,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<NotificationLog> NotificationLogs => Set<NotificationLog>();
     public DbSet<Setting> Settings => Set<Setting>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<Expense> Expenses => Set<Expense>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -248,5 +249,12 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<Setting>()
             .HasIndex(s => s.Key)
             .IsUnique();
+
+        // Expense mapping
+        modelBuilder.Entity<Expense>()
+            .HasOne(e => e.User)
+            .WithMany()
+            .HasForeignKey(e => e.UserId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }
