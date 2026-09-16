@@ -32,23 +32,26 @@ public class ApiController : ControllerBase
     }
 
     [HttpGet("products/search")]
-    public async Task<IActionResult> SearchProducts([FromQuery] string query)
+    public async Task<IActionResult> SearchProducts([FromQuery] string? query)
     {
-        if (string.IsNullOrWhiteSpace(query))
-        {
-            return Ok(new List<object>());
-        }
-
-        string q = query.Trim();
-        var products = await _context.Products
+        var qable = _context.Products
             .Include(p => p.Brand)
-            .Where(p => p.IsActive && (
+            .Where(p => p.IsActive);
+
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            string q = query.Trim();
+            qable = qable.Where(p =>
                 p.Name.Contains(q) ||
                 p.Barcode.Contains(q) ||
                 (p.SerialNumberOrImei != null && p.SerialNumberOrImei.Contains(q)) ||
                 (p.Model != null && p.Model.Contains(q)) ||
-                (p.Brand != null && p.Brand.Name.Contains(q))))
-            .Take(25)
+                (p.Brand != null && p.Brand.Name.Contains(q)));
+        }
+
+        var products = await qable
+            .OrderBy(p => p.Name)
+            .Take(30)
             .Select(p => new
             {
                 p.Id,

@@ -118,7 +118,8 @@ public class SuppliersController : Controller
         // Provide active brands and active products for the supply modal
         ViewBag.Brands = await _context.Brands.Where(b => b.IsActive).OrderBy(b => b.Name).ToListAsync();
         ViewBag.Products = await _context.Products
-            .Where(p => p.IsActive && p.ProductType == ProductType.Device)
+            .Include(p => p.Brand)
+            .Where(p => p.IsActive)
             .OrderBy(p => p.Name)
             .ToListAsync();
 
